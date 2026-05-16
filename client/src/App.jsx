@@ -108,11 +108,13 @@ function ChartTooltip({ active, payload, label, t }) {
 // ─── Contract Size Calculator ─────────────────────────────────────────────────
 
 const INSTRUMENTS = [
-  { id: 'ES',  label: 'ES',  name: 'S&P 500',    mini: 50,   micro: 5,    miniLabel: 'ES',  microLabel: 'MES' },
-  { id: 'NQ',  label: 'NQ',  name: 'Nasdaq',      mini: 20,   micro: 2,    miniLabel: 'NQ',  microLabel: 'MNQ' },
-  { id: 'YM',  label: 'YM',  name: 'Dow Jones',   mini: 5,    micro: 0.5,  miniLabel: 'YM',  microLabel: 'MYM' },
-  { id: 'RTY', label: 'RTY', name: 'Russell 2000', mini: 50,   micro: 5,    miniLabel: 'RTY', microLabel: 'M2K' },
-  { id: 'CL',  label: 'CL',  name: 'Crude Oil',   mini: 1000, micro: 100,  miniLabel: 'CL',  microLabel: 'MCL' },
+  { id: 'ES',  label: 'ES',  name: 'S&P 500',     mini: 50,   micro: 5,    miniLabel: 'ES',  microLabel: 'MES' },
+  { id: 'NQ',  label: 'NQ',  name: 'Nasdaq',       mini: 20,   micro: 2,    miniLabel: 'NQ',  microLabel: 'MNQ' },
+  { id: 'YM',  label: 'YM',  name: 'Dow Jones',    mini: 5,    micro: 0.5,  miniLabel: 'YM',  microLabel: 'MYM' },
+  { id: 'RTY', label: 'RTY', name: 'Russell 2000',  mini: 50,   micro: 5,    miniLabel: 'RTY', microLabel: 'M2K' },
+  { id: 'CL',  label: 'CL',  name: 'Crude Oil',    mini: 1000, micro: 100,  miniLabel: 'CL',  microLabel: 'MCL' },
+  { id: 'GC',  label: 'GC',  name: 'Gold',         mini: 100,  micro: 10,   miniLabel: 'GC',  microLabel: 'MGC' },
+  { id: '6E',  label: '6E',  name: 'Euro FX',      mini: 12.5, micro: 1.25, miniLabel: '6E', microLabel: 'M6E' },
 ]
 
 function ContractCalc({ t, inp }) {
@@ -125,8 +127,12 @@ function ContractCalc({ t, inp }) {
   const riskNum = parseFloat(risk)
   const valid = slNum > 0 && riskNum > 0 && inst
 
-  const miniContracts = valid ? riskNum / (slNum * inst.mini) : 0
-  const microContracts = valid ? riskNum / (slNum * inst.micro) : 0
+  const miniContracts = valid ? Math.max(1, Math.round(riskNum / (slNum * inst.mini))) : 0
+  const microContracts = valid ? Math.max(1, Math.round(riskNum / (slNum * inst.micro))) : 0
+  const miniExact = valid ? riskNum / (slNum * inst.mini) : 0
+  const microExact = valid ? riskNum / (slNum * inst.micro) : 0
+  const miniActualRisk = valid ? miniContracts * slNum * inst.mini : 0
+  const microActualRisk = valid ? microContracts * slNum * inst.micro : 0
 
   return (
     <GlassCard t={t} style={{ padding: '24px' }}>
@@ -182,10 +188,13 @@ function ContractCalc({ t, inp }) {
               Mini ({inst.miniLabel})
             </div>
             <div style={{ fontSize: 32, fontWeight: 800, color: '#636bff', letterSpacing: -1, lineHeight: 1, marginBottom: 4 }}>
-              {miniContracts < 1 ? miniContracts.toFixed(2) : miniContracts % 1 === 0 ? miniContracts.toFixed(0) : miniContracts.toFixed(1)}
+              {miniContracts}
             </div>
             <div style={{ fontSize: 11, color: t.muted }}>
-              contract{miniContracts !== 1 ? 's' : ''} · ${inst.mini}/pt
+              contract{miniContracts !== 1 ? 's' : ''} · ${inst.mini.toLocaleString()}/pt
+            </div>
+            <div style={{ fontSize: 11, color: miniActualRisk > riskNum ? t.amber : t.textSec, marginTop: 6 }}>
+              Actual risk: ${miniActualRisk.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
             </div>
           </div>
           <div style={{
@@ -196,10 +205,13 @@ function ContractCalc({ t, inp }) {
               Micro ({inst.microLabel})
             </div>
             <div style={{ fontSize: 32, fontWeight: 800, color: t.green, letterSpacing: -1, lineHeight: 1, marginBottom: 4 }}>
-              {microContracts < 1 ? microContracts.toFixed(2) : microContracts % 1 === 0 ? microContracts.toFixed(0) : microContracts.toFixed(1)}
+              {microContracts}
             </div>
             <div style={{ fontSize: 11, color: t.muted }}>
-              contract{microContracts !== 1 ? 's' : ''} · ${inst.micro}/pt
+              contract{microContracts !== 1 ? 's' : ''} · ${inst.micro.toLocaleString()}/pt
+            </div>
+            <div style={{ fontSize: 11, color: microActualRisk > riskNum ? t.amber : t.textSec, marginTop: 6 }}>
+              Actual risk: ${microActualRisk.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
             </div>
           </div>
         </div>
@@ -216,7 +228,8 @@ function ContractCalc({ t, inp }) {
       {valid && (
         <div style={{ marginTop: 12, padding: '10px 14px', background: t.inputBg, borderRadius: 10, border: `1px solid ${t.border}` }}>
           <div style={{ fontSize: 11, color: t.muted, lineHeight: 1.6 }}>
-            {slNum} pt × ${inst.micro}/pt = ${(slNum * inst.micro).toFixed(2)} risk per micro · ${riskNum} ÷ ${(slNum * inst.micro).toFixed(2)} = <span style={{ color: t.text, fontWeight: 600 }}>{microContracts.toFixed(2)} micros</span>
+            {slNum} pt × ${inst.micro.toLocaleString()}/pt = ${(slNum * inst.micro).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} per micro · ${riskNum} ÷ ${(slNum * inst.micro).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} = {microExact.toFixed(2)} → <span style={{ color: t.text, fontWeight: 600 }}>{microContracts} micro{microContracts !== 1 ? 's' : ''}</span>
+            {microActualRisk > riskNum && <span style={{ color: t.amber }}> (${(microActualRisk - riskNum).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} over target)</span>}
           </div>
         </div>
       )}
