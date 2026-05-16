@@ -105,6 +105,125 @@ function ChartTooltip({ active, payload, label, t }) {
   )
 }
 
+// ─── Contract Size Calculator ─────────────────────────────────────────────────
+
+const INSTRUMENTS = [
+  { id: 'ES',  label: 'ES',  name: 'S&P 500',    mini: 50,   micro: 5,    miniLabel: 'ES',  microLabel: 'MES' },
+  { id: 'NQ',  label: 'NQ',  name: 'Nasdaq',      mini: 20,   micro: 2,    miniLabel: 'NQ',  microLabel: 'MNQ' },
+  { id: 'YM',  label: 'YM',  name: 'Dow Jones',   mini: 5,    micro: 0.5,  miniLabel: 'YM',  microLabel: 'MYM' },
+  { id: 'RTY', label: 'RTY', name: 'Russell 2000', mini: 50,   micro: 5,    miniLabel: 'RTY', microLabel: 'M2K' },
+  { id: 'CL',  label: 'CL',  name: 'Crude Oil',   mini: 1000, micro: 100,  miniLabel: 'CL',  microLabel: 'MCL' },
+]
+
+function ContractCalc({ t, inp }) {
+  const [instrument, setInstrument] = useState('NQ')
+  const [sl, setSl] = useState('')
+  const [risk, setRisk] = useState('')
+
+  const inst = INSTRUMENTS.find(i => i.id === instrument)
+  const slNum = parseFloat(sl)
+  const riskNum = parseFloat(risk)
+  const valid = slNum > 0 && riskNum > 0 && inst
+
+  const miniContracts = valid ? riskNum / (slNum * inst.mini) : 0
+  const microContracts = valid ? riskNum / (slNum * inst.micro) : 0
+
+  return (
+    <GlassCard t={t} style={{ padding: '24px' }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 4 }}>Size Calculator</div>
+      <div style={{ fontSize: 12, color: t.muted, marginBottom: 18 }}>Points-based position sizing</div>
+
+      {/* Instrument picker */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+        {INSTRUMENTS.map(i => (
+          <button key={i.id} onClick={() => setInstrument(i.id)} style={{
+            padding: '6px 14px', borderRadius: 8,
+            border: `1px solid ${instrument === i.id ? '#636bff44' : t.border}`,
+            background: instrument === i.id ? t.blueDim : 'transparent',
+            color: instrument === i.id ? '#636bff' : t.textSec,
+            fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+            transition: 'all 0.15s',
+          }}>{i.label}</button>
+        ))}
+      </div>
+
+      {/* Inputs */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+        <div>
+          <div style={{ fontSize: 11, color: t.muted, marginBottom: 6, fontWeight: 500 }}>Stop loss (points)</div>
+          <input
+            style={{ ...inp, width: '100%', fontSize: 14 }}
+            type="number" placeholder="e.g. 10"
+            value={sl} onChange={e => setSl(e.target.value)}
+            onFocus={e => e.target.style.borderColor = '#636bff66'}
+            onBlur={e => e.target.style.borderColor = t.border}
+          />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: t.muted, marginBottom: 6, fontWeight: 500 }}>Risk amount ($)</div>
+          <input
+            style={{ ...inp, width: '100%', fontSize: 14 }}
+            type="number" placeholder="e.g. 200"
+            value={risk} onChange={e => setRisk(e.target.value)}
+            onFocus={e => e.target.style.borderColor = '#636bff66'}
+            onBlur={e => e.target.style.borderColor = t.border}
+          />
+        </div>
+      </div>
+
+      {/* Results */}
+      {valid ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{
+            background: t.blueDim, border: `1px solid rgba(99,107,255,0.15)`,
+            borderRadius: 14, padding: '18px 16px', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 10, color: t.muted, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
+              Mini ({inst.miniLabel})
+            </div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: '#636bff', letterSpacing: -1, lineHeight: 1, marginBottom: 4 }}>
+              {miniContracts < 1 ? miniContracts.toFixed(2) : miniContracts % 1 === 0 ? miniContracts.toFixed(0) : miniContracts.toFixed(1)}
+            </div>
+            <div style={{ fontSize: 11, color: t.muted }}>
+              contract{miniContracts !== 1 ? 's' : ''} · ${inst.mini}/pt
+            </div>
+          </div>
+          <div style={{
+            background: t.greenDim, border: `1px solid ${t.greenBorder}`,
+            borderRadius: 14, padding: '18px 16px', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 10, color: t.muted, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
+              Micro ({inst.microLabel})
+            </div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: t.green, letterSpacing: -1, lineHeight: 1, marginBottom: 4 }}>
+              {microContracts < 1 ? microContracts.toFixed(2) : microContracts % 1 === 0 ? microContracts.toFixed(0) : microContracts.toFixed(1)}
+            </div>
+            <div style={{ fontSize: 11, color: t.muted }}>
+              contract{microContracts !== 1 ? 's' : ''} · ${inst.micro}/pt
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          background: t.inputBg, borderRadius: 14, padding: '28px 16px',
+          textAlign: 'center', border: `1px dashed ${t.border}`,
+        }}>
+          <div style={{ fontSize: 13, color: t.muted }}>Enter SL points and risk $ to calculate</div>
+        </div>
+      )}
+
+      {/* Quick math breakdown */}
+      {valid && (
+        <div style={{ marginTop: 12, padding: '10px 14px', background: t.inputBg, borderRadius: 10, border: `1px solid ${t.border}` }}>
+          <div style={{ fontSize: 11, color: t.muted, lineHeight: 1.6 }}>
+            {slNum} pt × ${inst.micro}/pt = ${(slNum * inst.micro).toFixed(2)} risk per micro · ${riskNum} ÷ ${(slNum * inst.micro).toFixed(2)} = <span style={{ color: t.text, fontWeight: 600 }}>{microContracts.toFixed(2)} micros</span>
+          </div>
+        </div>
+      )}
+    </GlassCard>
+  )
+}
+
 // ─── Welcome / Passcode Screen ───────────────────────────────────────────────
 
 function PasscodeScreen({ users, onAuth, t }) {
@@ -682,7 +801,9 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
           )}
         </GlassCard>
 
-        {/* ── Daily Log ── */}
+        {/* ── Daily Log + Calculator ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
+
         <GlassCard t={t} style={{ padding: '24px' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 16 }}>Daily P&L Log</div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
@@ -731,6 +852,11 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
             })}
           </div>
         </GlassCard>
+
+        {/* ── Contract Size Calculator ── */}
+        <ContractCalc t={t} inp={inp} />
+
+        </div>
       </div>
     </div>
   )
