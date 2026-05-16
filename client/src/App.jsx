@@ -105,113 +105,242 @@ function ChartTooltip({ active, payload, label, t }) {
   )
 }
 
-// ─── Passcode Screen ──────────────────────────────────────────────────────────
+// ─── Welcome / Passcode Screen ───────────────────────────────────────────────
 
 function PasscodeScreen({ users, onAuth, t }) {
   const [selected, setSelected] = useState(null)
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
   const [shake, setShake] = useState(false)
+  const [verifying, setVerifying] = useState(false)
+  const inputRef = useRef(null)
 
-  const handleDigit = d => {
-    if (pin.length >= 4) return
-    const next = pin + d
-    setPin(next)
-    if (next.length === 4) verify(next)
-  }
+  useEffect(() => {
+    if (selected && inputRef.current) inputRef.current.focus()
+  }, [selected])
+
   const verify = async (code) => {
+    setVerifying(true)
     try {
       const res = await fetch('/api/auth', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: selected.id, passcode: code }),
       })
       if (res.ok) { onAuth(await res.json()) }
-      else { setShake(true); setError(true); setPin(''); setTimeout(() => setShake(false), 500); setTimeout(() => setError(false), 1500) }
+      else {
+        setShake(true); setError(true); setPin('')
+        setTimeout(() => setShake(false), 500)
+        setTimeout(() => setError(false), 2000)
+      }
     } catch { setPin('') }
+    setVerifying(false)
   }
 
-  return (
+  const handleInput = val => {
+    const clean = val.replace(/\D/g, '').slice(0, 4)
+    setPin(clean)
+    if (error) setError(false)
+    if (clean.length === 4) verify(clean)
+  }
+
+  const back = () => { setSelected(null); setPin(''); setError(false) }
+
+  // Shared page wrapper
+  const Page = ({ children }) => (
     <div style={{
       background: t.bg, minHeight: '100vh', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', fontFamily: FONT, padding: 24,
-      backgroundImage: `radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,107,255,0.08), transparent)`,
+      position: 'relative', overflow: 'hidden',
     }}>
-      <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 3, color: t.muted, textTransform: 'uppercase', marginBottom: 8 }}>LucidFlex</div>
-      <div style={{ fontSize: 24, fontWeight: 700, color: t.text, letterSpacing: -0.6, marginBottom: 4 }}>$50K Evaluation</div>
-      <div style={{ fontSize: 13, color: t.textSec, marginBottom: 40 }}>Performance tracker</div>
+      {/* Ambient glow */}
+      <div style={{ position: 'absolute', top: '-30%', left: '50%', transform: 'translateX(-50%)', width: '80vw', height: '60vh', borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(99,107,255,0.07), transparent 70%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: '-20%', left: '20%', width: '40vw', height: '40vh', borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(159,107,255,0.04), transparent 70%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {children}
+      </div>
+      <style>{`
+        @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
+      `}</style>
+    </div>
+  )
 
-      {!selected ? (
-        <>
-          <div style={{ fontSize: 14, color: t.textSec, marginBottom: 20 }}>Select your account</div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            {users.map(u => (
-              <button key={u.id} onClick={() => setSelected(u)} style={{
-                width: 140, padding: '28px 16px', borderRadius: 20,
-                border: `1px solid ${t.border}`, background: t.card,
-                backdropFilter: 'blur(20px)', cursor: 'pointer', textAlign: 'center',
-                transition: 'border-color 0.2s, transform 0.15s',
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = t.borderHover; e.currentTarget.style.transform = 'translateY(-2px)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.transform = 'translateY(0)' }}
-              >
-                <div style={{
-                  width: 52, height: 52, borderRadius: 16, background: t.accent,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  margin: '0 auto 12px', fontSize: 22, fontWeight: 700, color: '#fff',
-                }}>{u.name[0].toUpperCase()}</div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: t.text }}>{u.name}</div>
-              </button>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div style={{ width: '100%', maxWidth: 280 }}>
-          <button onClick={() => { setSelected(null); setPin('') }} style={{
-            background: 'none', border: 'none', color: t.textSec, fontSize: 13,
-            cursor: 'pointer', marginBottom: 24, padding: 0, fontFamily: FONT,
-          }}>← Back</button>
-          <div style={{ textAlign: 'center', marginBottom: 28 }}>
+  // ── User selection screen ──
+  if (!selected) return (
+    <Page>
+      {/* Logo */}
+      <div style={{
+        width: 48, height: 48, borderRadius: 14, background: t.accent,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 20, boxShadow: '0 4px 24px rgba(99,107,255,0.25)',
+      }}>
+        <span style={{ color: '#fff', fontSize: 16, fontWeight: 800, letterSpacing: 0.5 }}>LF</span>
+      </div>
+
+      <div style={{ fontSize: 28, fontWeight: 800, color: t.text, letterSpacing: -1, marginBottom: 4, textAlign: 'center' }}>Welcome back</div>
+      <div style={{ fontSize: 14, color: t.textSec, marginBottom: 40, textAlign: 'center' }}>Select your account to continue</div>
+
+      <div style={{ display: 'flex', gap: 14, width: '100%', justifyContent: 'center' }}>
+        {users.map((u, idx) => (
+          <button key={u.id} onClick={() => setSelected(u)} style={{
+            flex: '0 1 180px', padding: '32px 20px', borderRadius: 20,
+            border: `1px solid ${t.border}`, background: t.card,
+            backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+            cursor: 'pointer', textAlign: 'center',
+            transition: 'all 0.2s ease',
+            animation: `fadeUp 0.4s ease ${idx * 0.08}s both`,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#636bff44'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(99,107,255,0.12)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
+          >
             <div style={{
               width: 56, height: 56, borderRadius: 16, background: t.accent,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 12px', fontSize: 24, fontWeight: 700, color: '#fff',
-            }}>{selected.name[0].toUpperCase()}</div>
-            <div style={{ fontSize: 17, fontWeight: 600, color: t.text }}>{selected.name}</div>
-            <div style={{ fontSize: 13, color: t.textSec, marginTop: 4 }}>Enter passcode</div>
-          </div>
+              margin: '0 auto 14px', fontSize: 24, fontWeight: 800, color: '#fff',
+              boxShadow: '0 4px 16px rgba(99,107,255,0.3)',
+            }}>{u.name[0].toUpperCase()}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: t.text, marginBottom: 4 }}>{u.name}</div>
+            <div style={{ fontSize: 12, color: t.muted }}>$50K Evaluation</div>
+          </button>
+        ))}
+      </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 32, animation: shake ? 'shake 0.4s ease' : 'none' }}>
-            {[0,1,2,3].map(i => (
-              <div key={i} style={{
-                width: 12, height: 12, borderRadius: '50%',
-                background: i < pin.length ? (error ? t.red : 'url(#x) #636bff') : 'transparent',
-                backgroundColor: i < pin.length ? (error ? t.red : '#636bff') : 'transparent',
-                border: `2px solid ${i < pin.length ? (error ? t.red : '#636bff') : t.muted}`,
-                transition: 'all 0.15s', boxShadow: i < pin.length && !error ? '0 0 12px rgba(99,107,255,0.4)' : 'none',
-              }} />
-            ))}
-          </div>
+      <div style={{ marginTop: 48, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ width: 4, height: 4, borderRadius: '50%', background: t.green, boxShadow: `0 0 8px ${t.green}` }} />
+        <span style={{ fontSize: 12, color: t.muted }}>LucidFlex $50K · Evaluation Tracker</span>
+      </div>
+    </Page>
+  )
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-            {[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map((d, i) => (
-              <button key={i} onClick={() => { if (d === '⌫') setPin(p => p.slice(0,-1)); else if (d !== '') handleDigit(String(d)) }}
-                style={{
-                  height: 56, borderRadius: 14, border: `1px solid ${t.border}`,
-                  background: d === '' ? 'transparent' : t.pin, color: t.pinText,
-                  fontSize: 20, fontWeight: 500, cursor: d === '' ? 'default' : 'pointer',
-                  pointerEvents: d === '' ? 'none' : 'auto', fontFamily: FONT,
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={e => { if (d !== '') e.currentTarget.style.background = t.borderHover }}
-                onMouseLeave={e => { if (d !== '') e.currentTarget.style.background = t.pin }}
-              >{d}</button>
-            ))}
-          </div>
-          {error && <div style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: t.red, fontWeight: 500 }}>Wrong passcode</div>}
+  // ── PIN entry screen ──
+  return (
+    <Page>
+      <button onClick={back} style={{
+        alignSelf: 'flex-start', background: 'none', border: 'none',
+        color: t.textSec, fontSize: 13, cursor: 'pointer', fontFamily: FONT,
+        marginBottom: 32, padding: '4px 0', display: 'flex', alignItems: 'center', gap: 6,
+        transition: 'color 0.15s',
+      }}
+        onMouseEnter={e => e.currentTarget.style.color = t.text}
+        onMouseLeave={e => e.currentTarget.style.color = t.textSec}
+      >
+        <span style={{ fontSize: 16, lineHeight: 1 }}>←</span> Back
+      </button>
+
+      <div style={{ animation: 'fadeUp 0.3s ease both' }}>
+        {/* Avatar */}
+        <div style={{
+          width: 64, height: 64, borderRadius: 20, background: t.accent,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 16px', fontSize: 28, fontWeight: 800, color: '#fff',
+          boxShadow: '0 6px 24px rgba(99,107,255,0.3)',
+        }}>{selected.name[0].toUpperCase()}</div>
+
+        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: t.text, letterSpacing: -0.5, marginBottom: 4 }}>{selected.name}</div>
+          <div style={{ fontSize: 13, color: t.textSec }}>Enter your 4-digit passcode</div>
         </div>
-      )}
-      <style>{`@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}`}</style>
-    </div>
+
+        {/* Hidden real input for keyboard capture */}
+        <input
+          ref={inputRef}
+          type="tel"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="one-time-code"
+          value={pin}
+          onChange={e => handleInput(e.target.value)}
+          maxLength={4}
+          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+          autoFocus
+        />
+
+        {/* Visual PIN boxes */}
+        <div
+          onClick={() => inputRef.current?.focus()}
+          style={{
+            display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 24,
+            animation: shake ? 'shake 0.4s ease' : 'none', cursor: 'text',
+          }}
+        >
+          {[0,1,2,3].map(i => {
+            const filled = i < pin.length
+            const active = i === pin.length && !error
+            return (
+              <div key={i} style={{
+                width: 56, height: 64, borderRadius: 14, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                background: filled ? (error ? t.redDim : t.blueDim) : t.inputBg,
+                border: `2px solid ${error && filled ? t.red : active ? '#636bff' : filled ? '#636bff44' : t.border}`,
+                transition: 'all 0.15s ease',
+                boxShadow: active ? '0 0 0 4px rgba(99,107,255,0.1)' : filled && !error ? '0 0 12px rgba(99,107,255,0.08)' : 'none',
+              }}>
+                {filled ? (
+                  <div style={{
+                    width: 12, height: 12, borderRadius: '50%',
+                    background: error ? t.red : '#636bff',
+                    boxShadow: error ? `0 0 8px ${t.red}` : '0 0 8px rgba(99,107,255,0.4)',
+                    transition: 'all 0.1s',
+                  }} />
+                ) : active ? (
+                  <div style={{
+                    width: 2, height: 24, borderRadius: 1, background: '#636bff',
+                    animation: 'pulse 1s ease infinite',
+                  }} />
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Error message */}
+        <div style={{ textAlign: 'center', height: 20, marginBottom: 20 }}>
+          {error && (
+            <span style={{ fontSize: 13, color: t.red, fontWeight: 600, animation: 'fadeUp 0.2s ease' }}>
+              Wrong passcode — try again
+            </span>
+          )}
+          {verifying && !error && (
+            <span style={{ fontSize: 13, color: t.muted }}>Verifying…</span>
+          )}
+        </div>
+
+        {/* Numpad — compact, for mobile or preference */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, maxWidth: 260, margin: '0 auto' }}>
+          {[1,2,3,4,5,6,7,8,9,null,0,'del'].map((d, i) => {
+            if (d === null) return <div key={i} />
+            const isDel = d === 'del'
+            return (
+              <button key={i}
+                onClick={() => {
+                  if (isDel) { setPin(p => p.slice(0,-1)); if (error) setError(false) }
+                  else handleInput(pin + String(d))
+                  inputRef.current?.focus()
+                }}
+                style={{
+                  height: 52, borderRadius: 12,
+                  border: `1px solid ${t.border}`,
+                  background: t.inputBg,
+                  color: isDel ? t.textSec : t.text,
+                  fontSize: isDel ? 13 : 20, fontWeight: isDel ? 600 : 500,
+                  cursor: 'pointer', fontFamily: FONT,
+                  transition: 'all 0.1s',
+                  userSelect: 'none', WebkitTapHighlightColor: 'transparent',
+                }}
+                onMouseDown={e => { e.currentTarget.style.background = t.borderHover; e.currentTarget.style.transform = 'scale(0.96)' }}
+                onMouseUp={e => { e.currentTarget.style.background = t.inputBg; e.currentTarget.style.transform = 'scale(1)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = t.inputBg; e.currentTarget.style.transform = 'scale(1)' }}
+              >{isDel ? '⌫' : d}</button>
+            )
+          })}
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 28, fontSize: 12, color: t.muted }}>
+          Type on keyboard or tap the pad
+        </div>
+      </div>
+    </Page>
   )
 }
 
