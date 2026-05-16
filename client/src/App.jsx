@@ -179,6 +179,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const [pnlInput, setPnlInput] = useState('')
   const [labelInput, setLabelInput] = useState('')
   const [loaded, setLoaded] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
   const saveTimer = useRef(null)
 
   // Load data on mount
@@ -206,6 +207,16 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
 
   const setDaysSave = fn => setDays(prev => { const next = fn(prev); save(next, balance); return next })
   const setBalanceSave = v => { setBalance(v); save(days, v) }
+
+  const resetData = () => {
+    const empty = { days: [], balance: '50000' }
+    setDays([]); setBalance('50000'); setConfirmReset(false)
+    fetch(`/api/data/${user.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(empty),
+    })
+  }
 
   // ── Calculations ──
   const totalPnl = useMemo(() => days.reduce((s, d) => s + d.pnl, 0), [days])
@@ -281,6 +292,17 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
           <button onClick={() => setDark(d => !d)} style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${t.border}`, background: t.faint, color: t.text, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {dark ? '☀️' : '🌙'}
           </button>
+          {!confirmReset ? (
+            <button onClick={() => setConfirmReset(true)} style={{ height: 36, padding: '0 12px', borderRadius: 10, border: `1px solid ${t.border}`, background: t.faint, color: t.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Reset
+            </button>
+          ) : (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: t.muted }}>Sure?</span>
+              <button onClick={resetData} style={{ height: 36, padding: '0 12px', borderRadius: 10, border: `1px solid ${t.redBorder}`, background: t.redBg, color: t.red, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Yes, reset</button>
+              <button onClick={() => setConfirmReset(false)} style={{ height: 36, padding: '0 12px', borderRadius: 10, border: `1px solid ${t.border}`, background: t.faint, color: t.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+            </div>
+          )}
         </div>
       </div>
 
