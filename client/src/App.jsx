@@ -508,11 +508,35 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const resetData = () => { setDays([]); setBalance('50000'); setOverrideActive(false); setConfirmReset(false); fetch(`/api/data/${user.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: [], balance: '50000' }) }) }
 
   const totalPnl = useMemo(() => days.reduce((s, d) => s + d.pnl, 0), [days])
-  const bestDay = useMemo(() => { const pos = days.filter(d => d.pnl > 0); return pos.length > 0 ? Math.max(...pos.map(d => d.pnl)) : 0 }, [days])
-  const conPct = totalPnl > 0 && bestDay > 0 ? (bestDay / totalPnl) * 100 : 0
+  const bestTrade = useMemo(() => { const pos = days.filter(d => d.pnl > 0); return pos.length > 0 ? Math.max(...pos.map(d => d.pnl)) : 0 }, [days])
+
+  // ── Group trades by date for consistency ──
+  const dailyGroups = useMemo(() => {
+    const map = {}
+    days.forEach((d, i) => {
+      const key = d.date || 'undated'
+      if (!map[key]) map[key] = { date: key, trades: [], total: 0 }
+      map[key].trades.push({ ...d, _idx: i })
+      map[key].total += d.pnl
+    })
+    return Object.values(map).sort((a, b) => a.date.localeCompare(b.date))
+  }, [days])
+
+  const tradingDays = dailyGroups.filter(g => g.date !== 'undated').length
+  const bestDayTotal = useMemo(() => {
+    const positives = dailyGroups.filter(g => g.total > 0)
+    return positives.length > 0 ? Math.max(...positives.map(g => g.total)) : 0
+  }, [dailyGroups])
+  const bestDayDate = useMemo(() => {
+    const g = dailyGroups.find(g => g.total === bestDayTotal && g.total > 0)
+    return g ? g.date : null
+  }, [dailyGroups, bestDayTotal])
+
+  // Consistency uses DAILY totals, not individual trades
+  const conPct = totalPnl > 0 && bestDayTotal > 0 ? (bestDayTotal / totalPnl) * 100 : 0
   const passing = conPct <= 50 && totalPnl > 0
   const failing = totalPnl > 0 && conPct > 50
-  const neededMore = failing ? Math.ceil(bestDay * 2 - totalPnl) : 0
+  const neededMore = failing ? Math.ceil(bestDayTotal * 2 - totalPnl) : 0
   const maxBestDay = totalPnl > 0 ? Math.floor(totalPnl * 0.5) : 0
   const toTarget = Math.max(0, TARGET - totalPnl)
   const progressPct = Math.min(100, Math.max(0, (totalPnl / TARGET) * 100))
@@ -520,8 +544,37 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const mllBal = overrideActive ? (parseFloat(balance) || computedBalance) : computedBalance
   const mllBuffer = mllBal - MLL_FLOOR
   const mllPct = Math.min(100, Math.max(0, (mllBuffer / 2000) * 100))
-  const chartData = useMemo(() => { let cum = 0; return days.map((d, i) => { cum += d.pnl; return { name: d.label || `D${i+1}`, cumulative: parseFloat(cum.toFixed(2)) } }) }, [days])
-  const addDay = () => { const v = parseFloat(pnlInput); if (isNaN(v)) return; setDaysSave(prev => [...prev, { pnl: v, label: labelInput.trim() }]); setPnlInput(''); setLabelInput('') }
+  const chartData = useMemo(() => { let cum = 0; return days.map((d, i) => { cum += d.pnl; return { name: d.label || `#${i+1}`, cumulative: parseFloat(cum.toFixed(2)) } }) }, [days])
+  const addTrade = () => {
+    const v = parseFloat(pnlInput); if (isNaN(v)) return
+    const today = new Date().toISOString().split('T')[0]
+    setDaysSave(prev => [...prev, { pnl: v, label: labelInput.trim(), date: today }])
+    setPnlInput(''); setLabelInput('')
+  }
+
+  // ── Performance Metrics ──
+  const metrics = useMemo(() => {
+    if (days.length === 0) return null
+    const wins = days.filter(d => d.pnl > 0)
+    const losses = days.filter(d => d.pnl < 0)
+    const winRate = (wins.length / days.length) * 100
+    const avgWin = wins.length > 0 ? wins.reduce((s, d) => s + d.pnl, 0) / wins.length : 0
+    const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((s, d) => s + d.pnl, 0) / losses.length) : 0
+    const profitFactor = avgLoss > 0 && wins.length > 0 ? (wins.reduce((s, d) => s + d.pnl, 0)) / Math.abs(losses.reduce((s, d) => s + d.pnl, 0)) : wins.length > 0 ? Infinity : 0
+    const expectancy = days.length > 0 ? totalPnl / days.length : 0
+    const worstTrade = days.length > 0 ? Math.min(...days.map(d => d.pnl)) : 0
+    let peak = 0, maxDD = 0, cum = 0
+    for (const d of days) { cum += d.pnl; if (cum > peak) peak = cum; const dd = peak - cum; if (dd > maxDD) maxDD = dd }
+    let streak = 0, streakType = null
+    for (let i = days.length - 1; i >= 0; i--) {
+      const w = days[i].pnl > 0
+      if (streakType === null) { streakType = w; streak = 1 }
+      else if (w === streakType) streak++
+      else break
+    }
+    const avgRR = avgLoss > 0 ? avgWin / avgLoss : 0
+    return { winRate, avgWin, avgLoss, profitFactor, expectancy, worstTrade, maxDD, streak, streakType, avgRR, wins: wins.length, losses: losses.length }
+  }, [days, totalPnl])
 
   const accountStatus = totalPnl >= TARGET && passing ? 'READY TO PASS' : failing ? 'FIX CONSISTENCY' : mllPct < 25 ? 'AT RISK' : 'IN PROGRESS'
   const statusColor = accountStatus === 'READY TO PASS' ? t.green : accountStatus === 'FIX CONSISTENCY' || accountStatus === 'AT RISK' ? t.red : t.blue
@@ -605,7 +658,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
                 </span>
                 <span style={{ fontSize: 12, color: t.muted }}>from $50,000</span>
                 <div style={{ width: 1, height: 14, background: t.border }} />
-                <span style={{ fontSize: 12, color: t.textSec }}>{days.length} trading day{days.length !== 1 ? 's' : ''}</span>
+                <span style={{ fontSize: 12, color: t.textSec }}>{days.length} trade{days.length !== 1 ? 's' : ''} · {tradingDays} day{tradingDays !== 1 ? 's' : ''}</span>
               </div>
               {/* Override */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
@@ -650,7 +703,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
           {[
             { label: 'Total P&L', value: days.length === 0 ? '—' : fmt(totalPnl), color: days.length === 0 ? t.muted : totalPnl >= 0 ? t.green : t.red },
-            { label: 'Best day', value: bestDay > 0 ? '+' + fmt(bestDay) : '—', color: t.blue },
+            { label: 'Best day', value: bestDayTotal > 0 ? '+' + fmt(bestDayTotal) : '—', color: t.blue },
             { label: 'MLL buffer', value: fmt(Math.max(0, mllBuffer)), color: mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green },
             { label: 'Consistency', value: totalPnl > 0 ? `${conPct.toFixed(0)}%` : '—', color: conColor },
           ].map((s, i) => (
@@ -692,9 +745,9 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
                 <div style={{ fontSize: 13, fontWeight: 700, color: t.red, marginBottom: 6 }}>Earn {fmt(neededMore)} more to fix</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                   {[
-                    { l: 'Best day', v: fmt(bestDay) },
+                    { l: 'Best day', v: fmt(bestDayTotal) },
                     { l: 'Total now', v: fmt(totalPnl) },
-                    { l: 'Need total', v: fmt(bestDay * 2) },
+                    { l: 'Need total', v: fmt(bestDayTotal * 2) },
                   ].map((s, i) => (
                     <div key={i} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: '8px 10px' }}>
                       <div style={{ fontSize: 10, color: t.muted, marginBottom: 2 }}>{s.l}</div>
@@ -713,7 +766,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
 
             {totalPnl <= 0 && (
               <div style={{ textAlign: 'center', fontSize: 13, color: t.muted, padding: '10px 0' }}>
-                Log trading days to track consistency
+                Log trades to track consistency
               </div>
             )}
           </GlassCard>
@@ -774,26 +827,26 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
           </GlassCard>
         </div>
 
-        {/* ── Chart ── */}
-        <GlassCard t={t} style={{ marginBottom: 16, padding: '24px' }}>
+        {/* ── Equity Curve + Metrics ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 14, marginBottom: 16 }}>
+
+        <GlassCard t={t} style={{ padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Equity Curve</div>
-              <div style={{ fontSize: 12, color: t.muted }}>Cumulative P&L performance</div>
+              <div style={{ fontSize: 12, color: t.muted }}>Trade-by-trade performance</div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: t.muted }}>
-                <span style={{ width: 16, height: 2, background: t.green, display: 'inline-block', borderRadius: 1 }} />
-                $3k target
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: t.muted }}>
+              <span style={{ width: 16, height: 2, background: t.green, display: 'inline-block', borderRadius: 1 }} />
+              $3k target
             </div>
           </div>
           {chartData.length < 2 ? (
-            <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.inputBg, borderRadius: 12, border: `1px dashed ${t.border}` }}>
-              <span style={{ fontSize: 13, color: t.muted }}>Add 2+ days to see the equity curve</span>
+            <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.inputBg, borderRadius: 12, border: `1px dashed ${t.border}` }}>
+              <span style={{ fontSize: 13, color: t.muted }}>Add 2+ trades to see the equity curve</span>
             </div>
           ) : (
-            <div style={{ height: 220 }}>
+            <div style={{ height: 240 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
@@ -820,18 +873,88 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
           )}
         </GlassCard>
 
+        {/* ── Performance Metrics ── */}
+        <GlassCard t={t} style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 4 }}>Performance</div>
+          <div style={{ fontSize: 12, color: t.muted, marginBottom: 16 }}>{days.length} trade{days.length !== 1 ? 's' : ''} logged</div>
+
+          {!metrics ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 13, color: t.muted }}>Log trades to see metrics</span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+
+              {/* Win rate bar */}
+              <div style={{ background: t.inputBg, borderRadius: 12, padding: '14px 16px', border: `1px solid ${t.border}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, color: t.textSec }}>Win rate</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: metrics.winRate >= 50 ? t.green : t.red }}>{metrics.winRate.toFixed(0)}%</span>
+                </div>
+                <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', height: 8 }}>
+                  <div style={{ width: `${metrics.winRate}%`, background: t.green, transition: 'width 0.5s' }} />
+                  <div style={{ flex: 1, background: t.red + '44' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                  <span style={{ fontSize: 10, color: t.green }}>{metrics.wins}W</span>
+                  <span style={{ fontSize: 10, color: t.red }}>{metrics.losses}L</span>
+                </div>
+              </div>
+
+              {/* Metric grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, flex: 1 }}>
+                {[
+                  { l: 'Profit factor', v: metrics.profitFactor === Infinity ? '∞' : metrics.profitFactor.toFixed(2), c: metrics.profitFactor >= 1.5 ? t.green : metrics.profitFactor >= 1 ? t.amber : t.red },
+                  { l: 'Expectancy', v: (metrics.expectancy >= 0 ? '+' : '') + fmt(metrics.expectancy), c: metrics.expectancy >= 0 ? t.green : t.red },
+                  { l: 'Avg win', v: '+' + fmt(metrics.avgWin), c: t.green },
+                  { l: 'Avg loss', v: '-' + fmt(metrics.avgLoss), c: t.red },
+                  { l: 'Avg R:R', v: metrics.avgRR > 0 ? metrics.avgRR.toFixed(2) : '—', c: metrics.avgRR >= 1.5 ? t.green : metrics.avgRR >= 1 ? t.text : t.red },
+                  { l: 'Max drawdown', v: fmt(metrics.maxDD), c: metrics.maxDD > 1000 ? t.red : metrics.maxDD > 500 ? t.amber : t.text },
+                  { l: 'Best trade', v: bestTrade > 0 ? '+' + fmt(bestTrade) : '—', c: t.green },
+                  { l: 'Worst trade', v: metrics.worstTrade < 0 ? fmt(metrics.worstTrade) : '—', c: t.red },
+                ].map((m, i) => (
+                  <div key={i} style={{ background: t.inputBg, borderRadius: 10, padding: '10px 12px', border: `1px solid ${t.border}` }}>
+                    <div style={{ fontSize: 10, color: t.muted, fontWeight: 500, marginBottom: 4, letterSpacing: 0.3, textTransform: 'uppercase' }}>{m.l}</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: m.c, letterSpacing: -0.5 }}>{m.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Streak */}
+              <div style={{
+                background: metrics.streakType ? t.greenDim : t.redDim,
+                border: `1px solid ${metrics.streakType ? t.greenBorder : t.redBorder}`,
+                borderRadius: 10, padding: '10px 14px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <span style={{ fontSize: 12, color: t.textSec }}>Current streak</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: metrics.streakType ? t.green : t.red }}>
+                  {metrics.streak}{metrics.streakType ? 'W' : 'L'} {metrics.streakType ? '🔥' : ''}
+                </span>
+              </div>
+            </div>
+          )}
+        </GlassCard>
+
+        </div>
+
         {/* ── Daily Log + Calculator ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
 
         <GlassCard t={t} style={{ padding: '24px' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 16 }}>Daily P&L Log</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Trade Log</div>
+              <div style={{ fontSize: 12, color: t.muted }}>{days.length} trade{days.length !== 1 ? 's' : ''} · {tradingDays} day{tradingDays !== 1 ? 's' : ''}</div>
+            </div>
+          </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-            <input style={{ ...inp, flex: 1, fontSize: 13 }} placeholder="Label (optional)" value={labelInput} onChange={e => setLabelInput(e.target.value)}
+            <input style={{ ...inp, flex: 1, fontSize: 13 }} placeholder="e.g. NQ long, ES scalp" value={labelInput} onChange={e => setLabelInput(e.target.value)}
               onFocus={e => e.target.style.borderColor = t.blue + '66'} onBlur={e => e.target.style.borderColor = t.border} />
             <input style={{ ...inp, width: 100, fontSize: 13 }} placeholder="P&L $" type="number" value={pnlInput}
-              onChange={e => setPnlInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addDay()}
+              onChange={e => setPnlInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTrade()}
               onFocus={e => e.target.style.borderColor = t.blue + '66'} onBlur={e => e.target.style.borderColor = t.border} />
-            <button onClick={addDay} style={{
+            <button onClick={addTrade} style={{
               padding: '10px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
               background: t.accent, color: '#fff', fontWeight: 700, fontSize: 13, fontFamily: FONT,
               boxShadow: '0 2px 12px rgba(99,107,255,0.25)', transition: 'transform 0.1s',
@@ -840,35 +963,59 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
               onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
             >Add</button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 340, overflowY: 'auto' }}>
             {days.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 13, color: t.muted }}>No days logged yet</div>
-            ) : days.map((d, i) => {
-              const isBest = d.pnl === bestDay && d.pnl > 0
-              return (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '10px 14px', borderRadius: 10,
-                  background: isBest ? (dark ? 'rgba(255,176,32,0.08)' : 'rgba(255,176,32,0.08)') : t.inputBg,
-                  border: `1px solid ${isBest ? 'rgba(255,176,32,0.2)' : t.border}`,
-                  transition: 'background 0.15s',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {isBest && <span style={{ fontSize: 9, fontWeight: 800, color: t.amber, background: t.amberDim, padding: '2px 7px', borderRadius: 4, letterSpacing: 0.5 }}>BEST</span>}
-                    <span style={{ fontSize: 13, color: t.text, fontWeight: 500 }}>{d.label || `Day ${i + 1}`}</span>
+              <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 13, color: t.muted }}>No trades logged yet — add your first trade above</div>
+            ) : (
+              [...dailyGroups].reverse().map(group => {
+                const isBestDay = group.date === bestDayDate && bestDayTotal > 0
+                const d = group.date !== 'undated' ? new Date(group.date + 'T12:00:00') : null
+                const dayLabel = d ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Undated'
+                return (
+                  <div key={group.date}>
+                    {/* Day header */}
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '8px 12px', borderRadius: 10,
+                      background: isBestDay ? 'rgba(255,176,32,0.06)' : t.inputBg,
+                      border: `1px solid ${isBestDay ? 'rgba(255,176,32,0.15)' : t.border}`,
+                      marginBottom: 4,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {isBestDay && <span style={{ fontSize: 9, fontWeight: 800, color: t.amber, background: t.amberDim, padding: '2px 7px', borderRadius: 4, letterSpacing: 0.5 }}>BEST DAY</span>}
+                        <span style={{ fontSize: 12, fontWeight: 700, color: t.text }}>{dayLabel}</span>
+                        <span style={{ fontSize: 11, color: t.muted }}>{group.trades.length} trade{group.trades.length !== 1 ? 's' : ''}</span>
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: group.total >= 0 ? t.green : t.red, fontVariantNumeric: 'tabular-nums' }}>
+                        {group.total >= 0 ? '+' : ''}{fmt(group.total)}
+                      </span>
+                    </div>
+                    {/* Trades under this day */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, paddingLeft: 12, marginBottom: 2 }}>
+                      {group.trades.map(d => (
+                        <div key={d._idx} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '6px 12px', borderRadius: 8,
+                          borderLeft: `2px solid ${d.pnl >= 0 ? t.green + '44' : t.red + '44'}`,
+                          background: 'transparent',
+                        }}>
+                          <span style={{ fontSize: 12, color: t.textSec, fontWeight: 500 }}>{d.label || `Trade`}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: d.pnl >= 0 ? t.green : t.red, fontVariantNumeric: 'tabular-nums' }}>
+                              {d.pnl >= 0 ? '+' : ''}{fmt(d.pnl)}
+                            </span>
+                            <button onClick={() => setDaysSave(p => p.filter((_,j) => j !== d._idx))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.muted, fontSize: 14, padding: 0, lineHeight: 1, transition: 'color 0.15s', opacity: 0.5 }}
+                              onMouseEnter={e => { e.currentTarget.style.color = t.red; e.currentTarget.style.opacity = '1' }}
+                              onMouseLeave={e => { e.currentTarget.style.color = t.muted; e.currentTarget.style.opacity = '0.5' }}
+                            >×</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: d.pnl >= 0 ? t.green : t.red, fontVariantNumeric: 'tabular-nums' }}>
-                      {d.pnl >= 0 ? '+' : ''}{fmt(d.pnl)}
-                    </span>
-                    <button onClick={() => setDaysSave(p => p.filter((_,j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.muted, fontSize: 16, padding: 0, lineHeight: 1, transition: 'color 0.15s' }}
-                      onMouseEnter={e => e.currentTarget.style.color = t.red}
-                      onMouseLeave={e => e.currentTarget.style.color = t.muted}
-                    >×</button>
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })
+            )}
           </div>
         </GlassCard>
 
