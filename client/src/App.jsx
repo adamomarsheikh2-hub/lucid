@@ -485,11 +485,14 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const [labelInput, setLabelInput] = useState('')
   const [loaded, setLoaded] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [overrideActive, setOverrideActive] = useState(false)
   const saveTimer = useRef(null)
 
   useEffect(() => {
     fetch(`/api/data/${user.id}`).then(r => r.json()).then(d => {
-      setDays(d.days || []); setBalance(d.balance || '50000'); setLoaded(true)
+      setDays(d.days || []); setBalance(d.balance || '50000')
+      if (d.balance && d.balance !== '50000') setOverrideActive(true)
+      setLoaded(true)
     })
   }, [user.id])
 
@@ -501,8 +504,8 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   }, [user.id])
 
   const setDaysSave = fn => setDays(prev => { const next = fn(prev); save(next, balance); return next })
-  const setBalanceSave = v => { setBalance(v); save(days, v) }
-  const resetData = () => { setDays([]); setBalance('50000'); setConfirmReset(false); fetch(`/api/data/${user.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: [], balance: '50000' }) }) }
+  const setBalanceSave = v => { setBalance(v); setOverrideActive(v !== '' && v !== '50000'); save(days, v) }
+  const resetData = () => { setDays([]); setBalance('50000'); setOverrideActive(false); setConfirmReset(false); fetch(`/api/data/${user.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: [], balance: '50000' }) }) }
 
   const totalPnl = useMemo(() => days.reduce((s, d) => s + d.pnl, 0), [days])
   const bestDay = useMemo(() => { const pos = days.filter(d => d.pnl > 0); return pos.length > 0 ? Math.max(...pos.map(d => d.pnl)) : 0 }, [days])
@@ -513,9 +516,9 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const maxBestDay = totalPnl > 0 ? Math.floor(totalPnl * 0.5) : 0
   const toTarget = Math.max(0, TARGET - totalPnl)
   const progressPct = Math.min(100, Math.max(0, (totalPnl / TARGET) * 100))
-  const bal = parseFloat(balance) || 50000
   const computedBalance = 50000 + totalPnl
-  const mllBuffer = bal - MLL_FLOOR
+  const mllBal = overrideActive ? (parseFloat(balance) || computedBalance) : computedBalance
+  const mllBuffer = mllBal - MLL_FLOOR
   const mllPct = Math.min(100, Math.max(0, (mllBuffer / 2000) * 100))
   const chartData = useMemo(() => { let cum = 0; return days.map((d, i) => { cum += d.pnl; return { name: d.label || `D${i+1}`, cumulative: parseFloat(cum.toFixed(2)) } }) }, [days])
   const addDay = () => { const v = parseFloat(pnlInput); if (isNaN(v)) return; setDaysSave(prev => [...prev, { pnl: v, label: labelInput.trim() }]); setPnlInput(''); setLabelInput('') }
@@ -589,7 +592,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: t.muted, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Account Balance</div>
               <div style={{ fontSize: 42, fontWeight: 800, letterSpacing: -2, lineHeight: 1, color: t.text, marginBottom: 8 }}>
-                ${computedBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                ${(overrideActive ? (parseFloat(balance) || computedBalance) : computedBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <span style={{
@@ -607,7 +610,10 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
               {/* Override */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
                 <span style={{ fontSize: 11, color: t.muted }}>Broker override:</span>
-                <input style={{ ...inp, width: 110, fontSize: 12, padding: '6px 10px', borderRadius: 8 }} type="number" placeholder="50000" value={balance} onChange={e => setBalanceSave(e.target.value)} />
+                <input style={{ ...inp, width: 110, fontSize: 12, padding: '6px 10px', borderRadius: 8 }} type="number" placeholder="auto" value={overrideActive ? balance : ''} onChange={e => setBalanceSave(e.target.value)} />
+                {overrideActive && (
+                  <button onClick={() => { setOverrideActive(false); setBalance('50000'); save(days, '50000') }} style={{ background: 'none', border: 'none', color: t.muted, fontSize: 11, cursor: 'pointer', fontFamily: FONT, textDecoration: 'underline' }}>clear</button>
+                )}
               </div>
             </div>
 
