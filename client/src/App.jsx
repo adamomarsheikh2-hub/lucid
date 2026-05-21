@@ -32,7 +32,6 @@ const LIGHT = {
 // ─── Constants & Helpers ──────────────────────────────────────────────────────
 
 const TARGET = 3000
-const MLL_FLOOR = 48000
 const FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
 const fmt = v => (v < 0 ? '-' : '') + '$' + Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 })
 
@@ -541,9 +540,29 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const toTarget = Math.max(0, TARGET - totalPnl)
   const progressPct = Math.min(100, Math.max(0, (totalPnl / TARGET) * 100))
   const computedBalance = 50000 + totalPnl
-  const mllBal = overrideActive ? (parseFloat(balance) || computedBalance) : computedBalance
-  const mllBuffer = mllBal - MLL_FLOOR
-  const mllPct = Math.min(100, Math.max(0, (mllBuffer / 2000) * 100))
+
+  // ── Trailing MLL (EOD high watermark) ──
+  const START_BAL = 50000
+  const MLL_AMOUNT = 2000
+  const ITB = START_BAL + TARGET // $53,000 — trailing locks here
+
+  const { highWaterMark, mllFloor, mllBuffer, mllLocked } = useMemo(() => {
+    // Compute EOD balances from daily groups in chronological order
+    let hwm = START_BAL
+    let runningBal = START_BAL
+    const sorted = [...dailyGroups].sort((a, b) => a.date.localeCompare(b.date))
+    for (const g of sorted) {
+      runningBal += g.total
+      if (runningBal > hwm) hwm = runningBal
+    }
+    const locked = hwm >= ITB
+    const floor = locked ? ITB - MLL_AMOUNT : hwm - MLL_AMOUNT
+    const currentBal = overrideActive ? (parseFloat(balance) || computedBalance) : computedBalance
+    const buffer = currentBal - floor
+    return { highWaterMark: hwm, mllFloor: floor, mllBuffer: Math.max(0, buffer), mllLocked: locked }
+  }, [dailyGroups, computedBalance, overrideActive, balance])
+
+  const mllPct = MLL_AMOUNT > 0 ? Math.min(100, Math.max(0, (mllBuffer / MLL_AMOUNT) * 100)) : 100
   const chartData = useMemo(() => { let cum = 0; return days.map((d, i) => { cum += d.pnl; return { name: d.label || `#${i+1}`, cumulative: parseFloat(cum.toFixed(2)) } }) }, [days])
   const addTrade = () => {
     const v = parseFloat(pnlInput); if (isNaN(v)) return
@@ -776,10 +795,12 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 2 }}>Max Loss Limit</div>
-                <div style={{ fontSize: 12, color: t.muted }}>EOD trailing · Floor $48,000</div>
+                <div style={{ fontSize: 12, color: t.muted }}>
+                  EOD trailing · {mllLocked ? 'Locked ✓' : 'Active — floor rises with you'}
+                </div>
               </div>
               <StatusBadge
-                text={mllPct <= 0 ? 'BREACHED' : mllPct < 25 ? 'DANGER' : mllPct < 50 ? 'CAUTION' : 'SAFE'}
+                text={mllBuffer <= 0 ? 'BREACHED' : mllPct < 25 ? 'DANGER' : mllPct < 50 ? 'CAUTION' : 'SAFE'}
                 color={mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green}
                 bg={mllPct < 25 ? t.redDim : mllPct < 50 ? t.amberDim : t.greenDim}
               />
@@ -789,13 +810,11 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontSize: 12, color: t.muted }}>Distance to floor</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{Math.round(mllPct)}%</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{fmt(mllBuffer)}</span>
               </div>
               <div style={{ position: 'relative', height: 10, borderRadius: 99, overflow: 'hidden', background: t.inputBg }}>
-                {/* Danger / caution / safe zones */}
                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '25%', background: 'rgba(255,77,106,0.08)' }} />
                 <div style={{ position: 'absolute', left: '25%', top: 0, bottom: 0, width: '25%', background: 'rgba(255,176,32,0.06)' }} />
-                {/* Fill */}
                 <div style={{
                   width: `${mllPct}%`, height: '100%', borderRadius: 99,
                   background: mllPct < 25 ? `linear-gradient(90deg, ${t.red}, #ff6b84)` : mllPct < 50 ? `linear-gradient(90deg, ${t.amber}, #ffc84d)` : `linear-gradient(90deg, ${t.green}, #33e8aa)`,
@@ -803,27 +822,37 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
                 }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                <span style={{ fontSize: 10, color: t.red, fontWeight: 600 }}>$48,000</span>
-                <span style={{ fontSize: 10, color: t.muted }}>$50,000</span>
+                <span style={{ fontSize: 10, color: t.red, fontWeight: 600 }}>${mllFloor.toLocaleString()}</span>
+                <span style={{ fontSize: 10, color: t.muted }}>${highWaterMark.toLocaleString()}</span>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div style={{ background: t.inputBg, borderRadius: 12, padding: '14px 16px', border: `1px solid ${t.border}` }}>
-                <div style={{ fontSize: 10, color: t.muted, fontWeight: 500, marginBottom: 4, letterSpacing: 0.5, textTransform: 'uppercase' }}>Breach floor</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: t.text, letterSpacing: -0.5 }}>$48,000</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              <div style={{ background: t.inputBg, borderRadius: 12, padding: '12px 14px', border: `1px solid ${t.border}` }}>
+                <div style={{ fontSize: 10, color: t.muted, fontWeight: 500, marginBottom: 4, letterSpacing: 0.3, textTransform: 'uppercase' }}>Floor</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: t.red, letterSpacing: -0.5 }}>${mllFloor.toLocaleString()}</div>
+              </div>
+              <div style={{ background: t.inputBg, borderRadius: 12, padding: '12px 14px', border: `1px solid ${t.border}` }}>
+                <div style={{ fontSize: 10, color: t.muted, fontWeight: 500, marginBottom: 4, letterSpacing: 0.3, textTransform: 'uppercase' }}>Peak EOD</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: t.text, letterSpacing: -0.5 }}>${highWaterMark.toLocaleString()}</div>
               </div>
               <div style={{
                 background: mllPct < 25 ? t.redDim : mllPct < 50 ? t.amberDim : t.greenDim,
-                borderRadius: 12, padding: '14px 16px',
+                borderRadius: 12, padding: '12px 14px',
                 border: `1px solid ${mllPct < 25 ? t.redBorder : mllPct < 50 ? 'rgba(255,176,32,0.2)' : t.greenBorder}`,
               }}>
-                <div style={{ fontSize: 10, color: t.muted, fontWeight: 500, marginBottom: 4, letterSpacing: 0.5, textTransform: 'uppercase' }}>Buffer left</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green, letterSpacing: -0.5 }}>
-                  {fmt(Math.max(0, mllBuffer))}
+                <div style={{ fontSize: 10, color: t.muted, fontWeight: 500, marginBottom: 4, letterSpacing: 0.3, textTransform: 'uppercase' }}>Buffer</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green, letterSpacing: -0.5 }}>
+                  {fmt(mllBuffer)}
                 </div>
               </div>
             </div>
+
+            {!mllLocked && (
+              <div style={{ marginTop: 12, padding: '8px 12px', background: t.inputBg, borderRadius: 8, border: `1px solid ${t.border}`, fontSize: 11, color: t.muted, lineHeight: 1.6 }}>
+                Locks at <strong style={{ color: t.text }}>${ITB.toLocaleString()}</strong> EOD close — {computedBalance >= ITB ? 'reached ✓' : `${fmt(ITB - computedBalance)} away`}
+              </div>
+            )}
           </GlassCard>
         </div>
 
