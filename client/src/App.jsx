@@ -482,6 +482,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const [balance, setBalance] = useState('50000')
   const [pnlInput, setPnlInput] = useState('')
   const [labelInput, setLabelInput] = useState('')
+  const [dateInput, setDateInput] = useState('')
   const [loaded, setLoaded] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [overrideActive, setOverrideActive] = useState(false)
@@ -566,9 +567,9 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const chartData = useMemo(() => { let cum = 0; return days.map((d, i) => { cum += d.pnl; return { name: d.label || `#${i+1}`, cumulative: parseFloat(cum.toFixed(2)) } }) }, [days])
   const addTrade = () => {
     const v = parseFloat(pnlInput); if (isNaN(v)) return
-    const today = new Date().toISOString().split('T')[0]
-    setDaysSave(prev => [...prev, { pnl: v, label: labelInput.trim(), date: today }])
-    setPnlInput(''); setLabelInput('')
+    const tradeDate = dateInput || new Date().toISOString().split('T')[0]
+    setDaysSave(prev => [...prev, { pnl: v, label: labelInput.trim(), date: tradeDate }])
+    setPnlInput(''); setLabelInput(''); setDateInput('')
   }
 
   // ── Performance Metrics ──
@@ -977,11 +978,14 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
               <div style={{ fontSize: 12, color: t.muted }}>{days.length} trade{days.length !== 1 ? 's' : ''} · {tradingDays} day{tradingDays !== 1 ? 's' : ''}</div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-            <input style={{ ...inp, flex: 1, fontSize: 13 }} placeholder="e.g. NQ long, ES scalp" value={labelInput} onChange={e => setLabelInput(e.target.value)}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            <input style={{ ...inp, flex: '1 1 140px', fontSize: 13, minWidth: 0 }} placeholder="e.g. NQ long, ES scalp" value={labelInput} onChange={e => setLabelInput(e.target.value)}
               onFocus={e => e.target.style.borderColor = t.blue + '66'} onBlur={e => e.target.style.borderColor = t.border} />
-            <input style={{ ...inp, width: 100, fontSize: 13 }} placeholder="P&L $" type="number" value={pnlInput}
+            <input style={{ ...inp, width: 90, fontSize: 13 }} placeholder="P&L $" type="number" value={pnlInput}
               onChange={e => setPnlInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTrade()}
+              onFocus={e => e.target.style.borderColor = t.blue + '66'} onBlur={e => e.target.style.borderColor = t.border} />
+            <input style={{ ...inp, width: 130, fontSize: 12, color: dateInput ? t.text : t.muted }} type="date" value={dateInput}
+              onChange={e => setDateInput(e.target.value)}
               onFocus={e => e.target.style.borderColor = t.blue + '66'} onBlur={e => e.target.style.borderColor = t.border} />
             <button onClick={addTrade} style={{
               padding: '10px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
