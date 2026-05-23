@@ -18,15 +18,15 @@ const DARK = {
   pin: 'rgba(255,255,255,0.06)', pinText: '#e4e5ea',
 }
 const LIGHT = {
-  bg: '#f7f1e3', bgSub: '#f0e9d6', surface: '#fdfaf0', surfaceHover: '#f5eedb',
-  card: 'rgba(253,250,240,0.85)', cardSolid: '#fdfaf0', border: 'rgba(101,77,42,0.10)',
-  borderHover: 'rgba(101,77,42,0.18)', text: '#2a241a', textSec: '#6b5f4c', muted: '#a89d87',
-  green: '#0f9460', greenDim: 'rgba(15,148,96,0.10)', greenBorder: 'rgba(15,148,96,0.25)',
-  red: '#c4344c', redDim: 'rgba(196,52,76,0.10)', redBorder: 'rgba(196,52,76,0.25)',
-  blue: '#5a52d4', blueDim: 'rgba(90,82,212,0.08)', accent: 'linear-gradient(135deg, #5a52d4, #8a52d4)',
-  amber: '#c2780b', amberDim: 'rgba(194,120,11,0.10)',
-  inputBg: 'rgba(101,77,42,0.05)', glow: '0 0 40px rgba(90,82,212,0.05)',
-  pin: 'rgba(101,77,42,0.06)', pinText: '#2a241a',
+  bg: '#eae4d2', bgSub: '#e1dac3', surface: '#f1ebd8', surfaceHover: '#e6dfca',
+  card: 'rgba(241,235,216,0.85)', cardSolid: '#f1ebd8', border: 'rgba(80,60,30,0.10)',
+  borderHover: 'rgba(80,60,30,0.18)', text: '#2b2620', textSec: '#5a5247', muted: '#8a8073',
+  green: '#2d8a5e', greenDim: 'rgba(45,138,94,0.10)', greenBorder: 'rgba(45,138,94,0.25)',
+  red: '#b8434c', redDim: 'rgba(184,67,76,0.10)', redBorder: 'rgba(184,67,76,0.25)',
+  blue: '#4f56c8', blueDim: 'rgba(79,86,200,0.08)', accent: 'linear-gradient(135deg, #4f56c8, #7a4fc8)',
+  amber: '#b06b1f', amberDim: 'rgba(176,107,31,0.10)',
+  inputBg: 'rgba(80,60,30,0.05)', glow: '0 0 40px rgba(79,86,200,0.05)',
+  pin: 'rgba(80,60,30,0.06)', pinText: '#2b2620',
 }
 
 // ─── Constants & Helpers ──────────────────────────────────────────────────────
@@ -143,7 +143,7 @@ function ContractCalc({ t, inp }) {
           <button key={i.id} onClick={() => setInstrument(i.id)} style={{
             padding: '5px 11px', borderRadius: 6, border: 'none',
             background: instrument === i.id ? 'rgba(99,107,255,0.12)' : 'transparent',
-            color: instrument === i.id ? '#636bff' : t.muted,
+            color: instrument === i.id ? t.blue : t.muted,
             fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
           }}>{i.label}</button>
         ))}
@@ -160,7 +160,7 @@ function ContractCalc({ t, inp }) {
             <div style={{ background: t.bg, padding: '12px 14px' }}>
               <div style={{ fontSize: 10, color: t.muted, marginBottom: 4, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Mini · {inst.miniLabel}</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 22, fontWeight: 800, color: '#636bff', letterSpacing: -0.6 }}>{miniContracts}</span>
+                <span style={{ fontSize: 22, fontWeight: 800, color: t.blue, letterSpacing: -0.6 }}>{miniContracts}</span>
                 <span style={{ fontSize: 11, color: t.muted }}>= ${miniActualRisk.toFixed(0)} risk</span>
               </div>
             </div>
@@ -561,7 +561,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
       <header style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '12px 20px', borderBottom: `1px solid ${t.border}`,
-        background: dark ? 'rgba(10,11,16,0.85)' : 'rgba(247,241,227,0.85)',
+        background: dark ? 'rgba(10,11,16,0.85)' : 'rgba(234,228,210,0.85)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         position: 'sticky', top: 0, zIndex: 20,
       }}>
@@ -701,7 +701,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 10, color: t.muted }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ width: 10, height: 2, background: '#636bff', borderRadius: 1, display: 'inline-block' }} />
+                  <span style={{ width: 10, height: 2, background: t.blue, borderRadius: 1, display: 'inline-block' }} />
                   Equity
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -718,13 +718,13 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
                   <AreaChart data={chartData} margin={{ top: 16, right: 24, left: 8, bottom: 4 }}>
                     <defs>
                       <linearGradient id="cgPos" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#636bff" stopOpacity={0.35} />
-                        <stop offset="60%" stopColor="#636bff" stopOpacity={0.08} />
-                        <stop offset="100%" stopColor="#636bff" stopOpacity={0} />
+                        <stop offset="0%" stopColor={t.blue} stopOpacity={0.35} />
+                        <stop offset="60%" stopColor={t.blue} stopOpacity={0.08} />
+                        <stop offset="100%" stopColor={t.blue} stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="cgStroke" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#7c5fea" />
-                        <stop offset="100%" stopColor="#636bff" />
+                        <stop offset="0%" stopColor={t.blue} stopOpacity={0.9} />
+                        <stop offset="100%" stopColor={t.blue} />
                       </linearGradient>
                       <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                         <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
@@ -759,8 +759,8 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
                       stroke="url(#cgStroke)"
                       strokeWidth={2.5}
                       fill="url(#cgPos)"
-                      dot={{ fill: t.bg, stroke: '#636bff', strokeWidth: 2, r: 3 }}
-                      activeDot={{ r: 6, fill: '#636bff', stroke: t.bg, strokeWidth: 2, filter: 'url(#glow)' }}
+                      dot={{ fill: t.bg, stroke: t.blue, strokeWidth: 2, r: 3 }}
+                      activeDot={{ r: 6, fill: t.blue, stroke: t.bg, strokeWidth: 2, filter: 'url(#glow)' }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -867,7 +867,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [dark, setDark] = useState(() => { const v = localStorage.getItem('lf-dark'); return v === null ? true : v === '1' })
+  const [dark, setDark] = useState(() => { const v = localStorage.getItem('lf-dark'); return v === null ? false : v === '1' })
   const [users, setUsers] = useState([])
   const [auth, setAuth] = useState(() => { try { return JSON.parse(localStorage.getItem('lf-auth')) } catch { return null } })
   const [switchTarget, setSwitchTarget] = useState(null)
