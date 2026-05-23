@@ -591,46 +591,41 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
         </div>
       </header>
 
-      {/* ── Status Strip (4 rules) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: `1px solid ${t.border}` }}>
-        {[
-          { label: 'Target', val: `${Math.round(progressPct)}%`, sub: `${fmt(Math.max(0, totalPnl))} / $3k`, pct: progressPct, color: totalPnl >= TARGET ? t.green : t.blue },
-          { label: 'Consistency', val: totalPnl > 0 ? `${conPct.toFixed(0)}%` : '—', sub: failing ? 'over 50%' : passing ? 'within limit' : 'no data', pct: Math.min(100, conPct * 2), color: failing ? t.red : passing ? t.green : t.muted },
-          { label: 'MLL', val: fmt(mllBuffer), sub: mllLocked ? 'locked ✓' : `floor ${fmt(mllFloor)}`, pct: mllPct, color: mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green },
-          { label: 'Sessions', val: tradingDays, sub: `${days.length} trades`, pct: Math.min(100, tradingDays * 20), color: t.text },
-        ].map((r, i) => (
-          <div key={i} style={{ padding: '12px 16px', borderRight: i < 3 ? `1px solid ${t.border}` : 'none', position: 'relative' }}>
-            <div style={{ fontSize: 10, color: t.muted, textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 600, marginBottom: 4 }}>{r.label}</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-              <span style={{ fontSize: 18, fontWeight: 700, color: r.color, letterSpacing: -0.4 }}>{r.val}</span>
-              <span style={{ fontSize: 11, color: t.muted }}>{r.sub}</span>
-            </div>
-            <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 2, background: t.inputBg }}>
-              <div style={{ height: '100%', width: `${r.pct}%`, background: r.color, transition: 'width 0.5s' }} />
-            </div>
-          </div>
-        ))}
-      </div>
-
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px 0' }}>
 
-        {/* ── Hero Row: Balance + Δ + Inline Override ── */}
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 11, color: t.muted, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600, marginBottom: 6 }}>Account Balance</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
-              <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: -1.6, lineHeight: 1 }}>
-                ${(overrideActive ? (parseFloat(balance) || computedBalance) : computedBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: totalPnl >= 0 ? t.green : t.red }}>
-                {totalPnl >= 0 ? '+' : ''}{fmt(totalPnl)}
-              </span>
+        {/* ── Hero Row: Balance + Δ + Target progress + Override ── */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 11, color: t.muted, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600, marginBottom: 6 }}>Account Balance</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
+                <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: -1.6, lineHeight: 1 }}>
+                  ${(overrideActive ? (parseFloat(balance) || computedBalance) : computedBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: totalPnl >= 0 ? t.green : t.red }}>
+                  {totalPnl >= 0 ? '+' : ''}{fmt(totalPnl)}
+                </span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, color: t.muted }}>Override:</span>
+              <input style={{ ...inp, width: 100, fontSize: 12, padding: '6px 10px', borderRadius: 6 }} type="number" placeholder="auto" value={overrideActive ? balance : ''} onChange={e => setBalanceSave(e.target.value)} />
+              {overrideActive && <button onClick={() => { setOverrideActive(false); setBalance('50000'); save(days, '50000') }} style={{ background: 'none', border: 'none', color: t.muted, fontSize: 11, cursor: 'pointer', fontFamily: FONT }}>×</button>}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 11, color: t.muted }}>Override:</span>
-            <input style={{ ...inp, width: 100, fontSize: 12, padding: '6px 10px', borderRadius: 6 }} type="number" placeholder="auto" value={overrideActive ? balance : ''} onChange={e => setBalanceSave(e.target.value)} />
-            {overrideActive && <button onClick={() => { setOverrideActive(false); setBalance('50000'); save(days, '50000') }} style={{ background: 'none', border: 'none', color: t.muted, fontSize: 11, cursor: 'pointer', fontFamily: FONT }}>×</button>}
+          {/* Target progress bar */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+              <span style={{ fontSize: 11, color: t.muted, fontWeight: 500 }}>
+                Target progress · <span style={{ color: t.text, fontWeight: 600 }}>{Math.round(progressPct)}%</span>
+              </span>
+              <span style={{ fontSize: 11, color: t.muted }}>
+                {totalPnl >= TARGET ? <span style={{ color: t.green, fontWeight: 600 }}>Target hit ✓</span> : <span>{fmt(toTarget)} to <span style={{ color: t.text, fontWeight: 600 }}>$3,000</span></span>}
+              </span>
+            </div>
+            <div style={{ height: 4, background: t.inputBg, borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ width: `${progressPct}%`, height: '100%', background: totalPnl >= TARGET ? t.green : t.accent, transition: 'width 0.5s' }} />
+            </div>
           </div>
         </div>
 
@@ -690,44 +685,72 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
           </div>
         </div>
 
-        {/* ── Equity Curve + Metrics inline ── */}
-        <div style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: '20px', marginBottom: 24, background: t.bg }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Equity Curve</span>
-            {metrics && (
-              <div style={{ display: 'flex', gap: 18, fontSize: 11 }}>
-                <span><span style={{ color: t.muted }}>Win </span><span style={{ color: metrics.winRate >= 50 ? t.green : t.red, fontWeight: 600 }}>{metrics.winRate.toFixed(0)}%</span></span>
-                <span><span style={{ color: t.muted }}>PF </span><span style={{ color: metrics.profitFactor >= 1.5 ? t.green : metrics.profitFactor >= 1 ? t.amber : t.red, fontWeight: 600 }}>{metrics.profitFactor === Infinity ? '∞' : metrics.profitFactor.toFixed(2)}</span></span>
-                <span><span style={{ color: t.muted }}>Exp </span><span style={{ color: metrics.expectancy >= 0 ? t.green : t.red, fontWeight: 600 }}>{metrics.expectancy >= 0 ? '+' : ''}{fmt(metrics.expectancy)}</span></span>
-                <span><span style={{ color: t.muted }}>R:R </span><span style={{ color: t.text, fontWeight: 600 }}>{metrics.avgRR > 0 ? metrics.avgRR.toFixed(1) : '—'}</span></span>
-                <span><span style={{ color: t.muted }}>DD </span><span style={{ color: t.text, fontWeight: 600 }}>{fmt(metrics.maxDD)}</span></span>
-                <span><span style={{ color: t.muted }}>Streak </span><span style={{ color: metrics.streakType ? t.green : t.red, fontWeight: 600 }}>{metrics.streak}{metrics.streakType ? 'W' : 'L'}</span></span>
+        {/* ── Equity Curve + Stats panel side-by-side ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(220px, 1fr)', gap: 14, marginBottom: 24 }}>
+
+          {/* Chart */}
+          <div style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: '20px', background: t.bg }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Equity Curve</span>
+              <span style={{ fontSize: 11, color: t.muted }}>{days.length} trades · {tradingDays} days</span>
+            </div>
+            {chartData.length < 2 ? (
+              <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: t.muted }}>Add 2+ trades to see the curve</div>
+            ) : (
+              <div style={{ height: 220 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#636bff" stopOpacity={0.2} />
+                        <stop offset="100%" stopColor="#636bff" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="2 4" stroke={t.border} vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: t.muted }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: t.muted }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(1)}k` : `$${v}`} width={40} />
+                    <Tooltip content={<ChartTooltip t={t} />} />
+                    <ReferenceLine y={TARGET} stroke={t.green} strokeDasharray="4 4" strokeWidth={1} strokeOpacity={0.5} />
+                    <ReferenceLine y={0} stroke={t.border} />
+                    <Area type="monotone" dataKey="cumulative" stroke="#636bff" strokeWidth={2} fill="url(#cg)" dot={false} activeDot={{ r: 4, fill: '#636bff' }} />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             )}
           </div>
-          {chartData.length < 2 ? (
-            <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: t.muted }}>Add 2+ trades to see the curve</div>
-          ) : (
-            <div style={{ height: 180 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#636bff" stopOpacity={0.2} />
-                      <stop offset="100%" stopColor="#636bff" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="2 4" stroke={t.border} vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: t.muted }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: t.muted }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(1)}k` : `$${v}`} width={40} />
-                  <Tooltip content={<ChartTooltip t={t} />} />
-                  <ReferenceLine y={TARGET} stroke={t.green} strokeDasharray="4 4" strokeWidth={1} strokeOpacity={0.5} />
-                  <ReferenceLine y={0} stroke={t.border} />
-                  <Area type="monotone" dataKey="cumulative" stroke="#636bff" strokeWidth={2} fill="url(#cg)" dot={false} activeDot={{ r: 4, fill: '#636bff' }} />
-                </AreaChart>
-              </ResponsiveContainer>
+
+          {/* Stats Panel */}
+          <div style={{ border: `1px solid ${t.border}`, borderRadius: 12, background: t.bg, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '14px 18px', borderBottom: `1px solid ${t.border}` }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Stats</span>
             </div>
-          )}
+            {!metrics ? (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 20px', fontSize: 12, color: t.muted, textAlign: 'center' }}>
+                Log trades to see stats
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                {[
+                  { l: 'Win rate', v: `${metrics.winRate.toFixed(0)}%`, sub: `${metrics.wins}W / ${metrics.losses}L`, c: metrics.winRate >= 50 ? t.green : t.red },
+                  { l: 'Profit factor', v: metrics.profitFactor === Infinity ? '∞' : metrics.profitFactor.toFixed(2), sub: 'gross win ÷ loss', c: metrics.profitFactor >= 1.5 ? t.green : metrics.profitFactor >= 1 ? t.amber : t.red },
+                  { l: 'Avg R:R', v: metrics.avgRR > 0 ? metrics.avgRR.toFixed(2) : '—', sub: 'avg win ÷ avg loss', c: metrics.avgRR >= 1.5 ? t.green : metrics.avgRR >= 1 ? t.text : t.red },
+                  { l: 'Expectancy', v: (metrics.expectancy >= 0 ? '+' : '') + fmt(metrics.expectancy), sub: 'per trade', c: metrics.expectancy >= 0 ? t.green : t.red },
+                  { l: 'Max drawdown', v: fmt(metrics.maxDD), sub: 'peak to trough', c: metrics.maxDD > 1000 ? t.red : metrics.maxDD > 500 ? t.amber : t.text },
+                  { l: 'Best / Worst', v: `+${fmt(bestTrade)} / ${fmt(metrics.worstTrade)}`, sub: 'single trade', c: t.text, small: true },
+                  { l: 'Streak', v: `${metrics.streak}${metrics.streakType ? 'W' : 'L'}`, sub: 'current run', c: metrics.streakType ? t.green : t.red },
+                ].map((s, i) => (
+                  <div key={i} style={{ padding: '12px 18px', borderBottom: i < 6 ? `1px solid ${t.border}` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 11, color: t.text, fontWeight: 500 }}>{s.l}</div>
+                      <div style={{ fontSize: 10, color: t.muted, marginTop: 1 }}>{s.sub}</div>
+                    </div>
+                    <span style={{ fontSize: s.small ? 12 : 15, fontWeight: 700, color: s.c, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.2, whiteSpace: 'nowrap' }}>{s.v}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
 
         {/* ── Trade Log + Calc ── */}
