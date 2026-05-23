@@ -128,111 +128,55 @@ function ContractCalc({ t, inp }) {
 
   const miniContracts = valid ? Math.max(1, Math.round(riskNum / (slNum * inst.mini))) : 0
   const microContracts = valid ? Math.max(1, Math.round(riskNum / (slNum * inst.micro))) : 0
-  const miniExact = valid ? riskNum / (slNum * inst.mini) : 0
-  const microExact = valid ? riskNum / (slNum * inst.micro) : 0
   const miniActualRisk = valid ? miniContracts * slNum * inst.mini : 0
   const microActualRisk = valid ? microContracts * slNum * inst.micro : 0
 
   return (
-    <GlassCard t={t} style={{ padding: '24px' }}>
-      <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 4 }}>Size Calculator</div>
-      <div style={{ fontSize: 12, color: t.muted, marginBottom: 18 }}>Points-based position sizing</div>
+    <div style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: '20px', background: t.bg }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Size Calculator</span>
+        <span style={{ fontSize: 11, color: t.muted }}>{inst.miniLabel} · ${inst.mini.toLocaleString()}/pt</span>
+      </div>
 
-      {/* Instrument picker */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
         {INSTRUMENTS.map(i => (
           <button key={i.id} onClick={() => setInstrument(i.id)} style={{
-            padding: '6px 14px', borderRadius: 8,
-            border: `1px solid ${instrument === i.id ? '#636bff44' : t.border}`,
-            background: instrument === i.id ? t.blueDim : 'transparent',
-            color: instrument === i.id ? '#636bff' : t.textSec,
-            fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
-            transition: 'all 0.15s',
+            padding: '5px 11px', borderRadius: 6, border: 'none',
+            background: instrument === i.id ? 'rgba(99,107,255,0.12)' : 'transparent',
+            color: instrument === i.id ? '#636bff' : t.muted,
+            fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
           }}>{i.label}</button>
         ))}
       </div>
 
-      {/* Inputs */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
-        <div>
-          <div style={{ fontSize: 11, color: t.muted, marginBottom: 6, fontWeight: 500 }}>Stop loss (points)</div>
-          <input
-            style={{ ...inp, width: '100%', fontSize: 14 }}
-            type="number" placeholder="e.g. 10"
-            value={sl} onChange={e => setSl(e.target.value)}
-            onFocus={e => e.target.style.borderColor = '#636bff66'}
-            onBlur={e => e.target.style.borderColor = t.border}
-          />
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: t.muted, marginBottom: 6, fontWeight: 500 }}>Risk amount ($)</div>
-          <input
-            style={{ ...inp, width: '100%', fontSize: 14 }}
-            type="number" placeholder="e.g. 200"
-            value={risk} onChange={e => setRisk(e.target.value)}
-            onFocus={e => e.target.style.borderColor = '#636bff66'}
-            onBlur={e => e.target.style.borderColor = t.border}
-          />
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+        <input style={{ ...inp, fontSize: 13, padding: '9px 11px' }} type="number" placeholder="SL points" value={sl} onChange={e => setSl(e.target.value)} />
+        <input style={{ ...inp, fontSize: 13, padding: '9px 11px' }} type="number" placeholder="Risk $" value={risk} onChange={e => setRisk(e.target.value)} />
       </div>
 
-      {/* Results */}
       {valid ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div style={{
-            background: t.blueDim, border: `1px solid rgba(99,107,255,0.15)`,
-            borderRadius: 14, padding: '18px 16px', textAlign: 'center',
-          }}>
-            <div style={{ fontSize: 10, color: t.muted, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
-              Mini ({inst.miniLabel})
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: t.border, border: `1px solid ${t.border}`, borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ background: t.bg, padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, color: t.muted, marginBottom: 4, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Mini · {inst.miniLabel}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 22, fontWeight: 800, color: '#636bff', letterSpacing: -0.6 }}>{miniContracts}</span>
+                <span style={{ fontSize: 11, color: t.muted }}>= ${miniActualRisk.toFixed(0)} risk</span>
+              </div>
             </div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: '#636bff', letterSpacing: -1, lineHeight: 1, marginBottom: 4 }}>
-              {miniContracts}
-            </div>
-            <div style={{ fontSize: 11, color: t.muted }}>
-              contract{miniContracts !== 1 ? 's' : ''} · ${inst.mini.toLocaleString()}/pt
-            </div>
-            <div style={{ fontSize: 11, color: miniActualRisk > riskNum ? t.amber : t.textSec, marginTop: 6 }}>
-              Actual risk: ${miniActualRisk.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-            </div>
-          </div>
-          <div style={{
-            background: t.greenDim, border: `1px solid ${t.greenBorder}`,
-            borderRadius: 14, padding: '18px 16px', textAlign: 'center',
-          }}>
-            <div style={{ fontSize: 10, color: t.muted, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
-              Micro ({inst.microLabel})
-            </div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: t.green, letterSpacing: -1, lineHeight: 1, marginBottom: 4 }}>
-              {microContracts}
-            </div>
-            <div style={{ fontSize: 11, color: t.muted }}>
-              contract{microContracts !== 1 ? 's' : ''} · ${inst.micro.toLocaleString()}/pt
-            </div>
-            <div style={{ fontSize: 11, color: microActualRisk > riskNum ? t.amber : t.textSec, marginTop: 6 }}>
-              Actual risk: ${microActualRisk.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            <div style={{ background: t.bg, padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, color: t.muted, marginBottom: 4, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Micro · {inst.microLabel}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 22, fontWeight: 800, color: t.green, letterSpacing: -0.6 }}>{microContracts}</span>
+                <span style={{ fontSize: 11, color: t.muted }}>= ${microActualRisk.toFixed(0)} risk</span>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       ) : (
-        <div style={{
-          background: t.inputBg, borderRadius: 14, padding: '28px 16px',
-          textAlign: 'center', border: `1px dashed ${t.border}`,
-        }}>
-          <div style={{ fontSize: 13, color: t.muted }}>Enter SL points and risk $ to calculate</div>
-        </div>
+        <div style={{ textAlign: 'center', padding: '20px 0', fontSize: 12, color: t.muted }}>Enter SL and risk to calculate</div>
       )}
-
-      {/* Quick math breakdown */}
-      {valid && (
-        <div style={{ marginTop: 12, padding: '10px 14px', background: t.inputBg, borderRadius: 10, border: `1px solid ${t.border}` }}>
-          <div style={{ fontSize: 11, color: t.muted, lineHeight: 1.6 }}>
-            {slNum} pt × ${inst.micro.toLocaleString()}/pt = ${(slNum * inst.micro).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} per micro · ${riskNum} ÷ ${(slNum * inst.micro).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} = {microExact.toFixed(2)} → <span style={{ color: t.text, fontWeight: 600 }}>{microContracts} micro{microContracts !== 1 ? 's' : ''}</span>
-            {microActualRisk > riskNum && <span style={{ color: t.amber }}> (${(microActualRisk - riskNum).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} over target)</span>}
-          </div>
-        </div>
-      )}
-    </GlassCard>
+    </div>
   )
 }
 
@@ -611,450 +555,237 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   )
 
   return (
-    <div style={{
-      background: t.bg, minHeight: '100vh', fontFamily: FONT,
-      padding: '0 0 60px', boxSizing: 'border-box',
-      backgroundImage: `radial-gradient(ellipse 80% 40% at 50% -10%, rgba(99,107,255,0.06), transparent)`,
-    }}>
+    <div style={{ background: t.bg, minHeight: '100vh', fontFamily: FONT, color: t.text, padding: '0 0 60px', boxSizing: 'border-box' }}>
 
-      {/* ── Top Bar ── */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '14px 20px', borderBottom: `1px solid ${t.border}`,
-        background: t.card, backdropFilter: 'blur(20px)',
-        position: 'sticky', top: 0, zIndex: 10,
+      {/* ── Header ── */}
+      <header style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '12px 20px', borderBottom: `1px solid ${t.border}`,
+        background: dark ? 'rgba(10,11,16,0.85)' : 'rgba(245,246,248,0.85)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        position: 'sticky', top: 0, zIndex: 20,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: '#fff', fontSize: 12, fontWeight: 800 }}>LF</span>
-          </div>
-          <span style={{ fontSize: 14, fontWeight: 600, color: t.text }}>LucidFlex $50K</span>
-          <StatusBadge text={accountStatus} color={statusColor} bg={statusBg} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 24, height: 24, borderRadius: 6, background: t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 800 }}>L</div>
+          <span style={{ fontSize: 13.5, fontWeight: 600 }}>LucidFlex <span style={{ color: t.muted, fontWeight: 500 }}>· $50K</span></span>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           {allUsers.map(u => (
             <button key={u.id} onClick={() => onSwitch(u)} style={{
-              padding: '5px 12px', borderRadius: 8, border: `1px solid ${u.id === user.id ? t.blue + '44' : t.border}`,
-              background: u.id === user.id ? t.blueDim : 'transparent',
-              color: u.id === user.id ? t.blue : t.textSec, fontWeight: 600, fontSize: 12,
-              cursor: 'pointer', fontFamily: FONT, transition: 'all 0.15s',
+              padding: '4px 10px', borderRadius: 6,
+              border: 'none', background: u.id === user.id ? 'rgba(255,255,255,0.06)' : 'transparent',
+              color: u.id === user.id ? t.text : t.muted, fontWeight: 500, fontSize: 12,
+              cursor: 'pointer', fontFamily: FONT,
             }}>{u.name}</button>
           ))}
-          <div style={{ width: 1, height: 20, background: t.border, margin: '0 4px' }} />
-          <button onClick={() => setDark(d => !d)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.border}`, background: 'transparent', color: t.textSec, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {dark ? '☀' : '☾'}
-          </button>
+          <div style={{ width: 1, height: 16, background: t.border, margin: '0 6px' }} />
+          <button onClick={() => setDark(d => !d)} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: t.muted, fontSize: 13, cursor: 'pointer' }}>{dark ? '☀' : '☾'}</button>
           {!confirmReset ? (
-            <button onClick={() => setConfirmReset(true)} style={{ height: 32, padding: '0 10px', borderRadius: 8, border: `1px solid ${t.border}`, background: 'transparent', color: t.muted, fontSize: 11, cursor: 'pointer', fontFamily: FONT, fontWeight: 500 }}>Reset</button>
+            <button onClick={() => setConfirmReset(true)} style={{ height: 28, padding: '0 10px', borderRadius: 6, border: 'none', background: 'transparent', color: t.muted, fontSize: 11, cursor: 'pointer', fontFamily: FONT }}>Reset</button>
           ) : (
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              <button onClick={resetData} style={{ height: 32, padding: '0 10px', borderRadius: 8, border: `1px solid ${t.redBorder}`, background: t.redDim, color: t.red, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: FONT }}>Confirm</button>
-              <button onClick={() => setConfirmReset(false)} style={{ height: 32, padding: '0 10px', borderRadius: 8, border: `1px solid ${t.border}`, background: 'transparent', color: t.muted, fontSize: 11, cursor: 'pointer', fontFamily: FONT }}>Cancel</button>
-            </div>
+            <>
+              <button onClick={resetData} style={{ height: 28, padding: '0 10px', borderRadius: 6, border: 'none', background: t.redDim, color: t.red, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: FONT }}>Confirm</button>
+              <button onClick={() => setConfirmReset(false)} style={{ height: 28, padding: '0 8px', borderRadius: 6, border: 'none', background: 'transparent', color: t.muted, fontSize: 11, cursor: 'pointer', fontFamily: FONT }}>Cancel</button>
+            </>
           )}
         </div>
+      </header>
+
+      {/* ── Status Strip (4 rules) ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: `1px solid ${t.border}` }}>
+        {[
+          { label: 'Target', val: `${Math.round(progressPct)}%`, sub: `${fmt(Math.max(0, totalPnl))} / $3k`, pct: progressPct, color: totalPnl >= TARGET ? t.green : t.blue },
+          { label: 'Consistency', val: totalPnl > 0 ? `${conPct.toFixed(0)}%` : '—', sub: failing ? 'over 50%' : passing ? 'within limit' : 'no data', pct: Math.min(100, conPct * 2), color: failing ? t.red : passing ? t.green : t.muted },
+          { label: 'MLL', val: fmt(mllBuffer), sub: mllLocked ? 'locked ✓' : `floor ${fmt(mllFloor)}`, pct: mllPct, color: mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green },
+          { label: 'Sessions', val: tradingDays, sub: `${days.length} trades`, pct: Math.min(100, tradingDays * 20), color: t.text },
+        ].map((r, i) => (
+          <div key={i} style={{ padding: '12px 16px', borderRight: i < 3 ? `1px solid ${t.border}` : 'none', position: 'relative' }}>
+            <div style={{ fontSize: 10, color: t.muted, textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 600, marginBottom: 4 }}>{r.label}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: r.color, letterSpacing: -0.4 }}>{r.val}</span>
+              <span style={{ fontSize: 11, color: t.muted }}>{r.sub}</span>
+            </div>
+            <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 2, background: t.inputBg }}>
+              <div style={{ height: '100%', width: `${r.pct}%`, background: r.color, transition: 'width 0.5s' }} />
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px 20px 0' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px 0' }}>
 
-        {/* ── Hero Section ── */}
-        <GlassCard t={t} glow style={{ marginBottom: 16, padding: '28px 28px 24px', position: 'relative', overflow: 'hidden' }}>
-          {/* Subtle gradient orb */}
-          <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,107,255,0.08), transparent 70%)', pointerEvents: 'none' }} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 24, alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: t.muted, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Account Balance</div>
-              <div style={{ fontSize: 42, fontWeight: 800, letterSpacing: -2, lineHeight: 1, color: t.text, marginBottom: 8 }}>
+        {/* ── Hero Row: Balance + Δ + Inline Override ── */}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 11, color: t.muted, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600, marginBottom: 6 }}>Account Balance</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
+              <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: -1.6, lineHeight: 1 }}>
                 ${(overrideActive ? (parseFloat(balance) || computedBalance) : computedBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <span style={{
-                  fontSize: 14, fontWeight: 700,
-                  color: totalPnl >= 0 ? t.green : t.red,
-                  background: totalPnl >= 0 ? t.greenDim : t.redDim,
-                  padding: '4px 10px', borderRadius: 8,
-                }}>
-                  {totalPnl >= 0 ? '▲' : '▼'} {totalPnl >= 0 ? '+' : ''}{fmt(totalPnl)}
-                </span>
-                <span style={{ fontSize: 12, color: t.muted }}>from $50,000</span>
-                <div style={{ width: 1, height: 14, background: t.border }} />
-                <span style={{ fontSize: 12, color: t.textSec }}>{days.length} trade{days.length !== 1 ? 's' : ''} · {tradingDays} day{tradingDays !== 1 ? 's' : ''}</span>
-              </div>
-              {/* Override */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
-                <span style={{ fontSize: 11, color: t.muted }}>Broker override:</span>
-                <input style={{ ...inp, width: 110, fontSize: 12, padding: '6px 10px', borderRadius: 8 }} type="number" placeholder="auto" value={overrideActive ? balance : ''} onChange={e => setBalanceSave(e.target.value)} />
-                {overrideActive && (
-                  <button onClick={() => { setOverrideActive(false); setBalance('50000'); save(days, '50000') }} style={{ background: 'none', border: 'none', color: t.muted, fontSize: 11, cursor: 'pointer', fontFamily: FONT, textDecoration: 'underline' }}>clear</button>
-                )}
-              </div>
-            </div>
-
-            {/* Right side — target ring */}
-            <div style={{ textAlign: 'center', minWidth: 140 }}>
-              <div style={{ position: 'relative', display: 'inline-block' }}>
-                <svg width="120" height="120" viewBox="0 0 120 120">
-                  <circle cx="60" cy="60" r="50" fill="none" stroke={t.inputBg} strokeWidth="7" />
-                  <circle cx="60" cy="60" r="50" fill="none" stroke="url(#targetGrad)" strokeWidth="7"
-                    strokeLinecap="round" strokeDasharray={Math.PI * 100}
-                    strokeDashoffset={Math.PI * 100 - (progressPct / 100) * Math.PI * 100}
-                    transform="rotate(-90 60 60)"
-                    style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.16,1,0.3,1)' }} />
-                  <defs>
-                    <linearGradient id="targetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#636bff" />
-                      <stop offset="100%" stopColor={totalPnl >= TARGET ? '#00d68f' : '#9f6bff'} />
-                    </linearGradient>
-                  </defs>
-                  <text x="60" y="56" textAnchor="middle" fill={t.text} fontSize="22" fontWeight="800" fontFamily={FONT}>
-                    {Math.round(progressPct)}%
-                  </text>
-                  <text x="60" y="72" textAnchor="middle" fill={t.muted} fontSize="10" fontWeight="500" fontFamily={FONT}>
-                    of $3,000
-                  </text>
-                </svg>
-              </div>
-              <div style={{ fontSize: 11, color: t.textSec, marginTop: 4 }}>{totalPnl >= TARGET ? 'Target reached' : `${fmt(toTarget)} to target`}</div>
+              </span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: totalPnl >= 0 ? t.green : t.red }}>
+                {totalPnl >= 0 ? '+' : ''}{fmt(totalPnl)}
+              </span>
             </div>
           </div>
-        </GlassCard>
-
-        {/* ── Quick Stats ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
-          {[
-            { label: 'Total P&L', value: days.length === 0 ? '—' : fmt(totalPnl), color: days.length === 0 ? t.muted : totalPnl >= 0 ? t.green : t.red },
-            { label: 'Best day', value: bestDayTotal > 0 ? '+' + fmt(bestDayTotal) : '—', color: t.blue },
-            { label: 'MLL buffer', value: fmt(Math.max(0, mllBuffer)), color: mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green },
-            { label: 'Consistency', value: totalPnl > 0 ? `${conPct.toFixed(0)}%` : '—', color: conColor },
-          ].map((s, i) => (
-            <GlassCard key={i} t={t} style={{ padding: '16px 18px' }}>
-              <div style={{ fontSize: 11, color: t.muted, fontWeight: 500, marginBottom: 6 }}>{s.label}</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: s.color, letterSpacing: -0.8, lineHeight: 1 }}>{s.value}</div>
-            </GlassCard>
-          ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, color: t.muted }}>Override:</span>
+            <input style={{ ...inp, width: 100, fontSize: 12, padding: '6px 10px', borderRadius: 6 }} type="number" placeholder="auto" value={overrideActive ? balance : ''} onChange={e => setBalanceSave(e.target.value)} />
+            {overrideActive && <button onClick={() => { setOverrideActive(false); setBalance('50000'); save(days, '50000') }} style={{ background: 'none', border: 'none', color: t.muted, fontSize: 11, cursor: 'pointer', fontFamily: FONT }}>×</button>}
+          </div>
         </div>
 
-        {/* ── Main Grid: Consistency + MLL ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginBottom: 16 }}>
+        {/* ── Consistency + MLL detail (compact, side-by-side) ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 1, background: t.border, border: `1px solid ${t.border}`, borderRadius: 12, marginBottom: 24, overflow: 'hidden' }}>
 
-          {/* Consistency */}
-          <GlassCard t={t} style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 2 }}>Consistency Check</div>
-                <div style={{ fontSize: 12, color: t.muted }}>Best day ÷ Total ≤ 50%</div>
-              </div>
-              <StatusBadge
-                text={totalPnl <= 0 ? 'NO DATA' : failing ? 'FAILING' : 'PASSING'}
-                color={totalPnl <= 0 ? t.muted : conColor}
-                bg={totalPnl <= 0 ? t.inputBg : failing ? t.redDim : t.greenDim}
-              />
+          <div style={{ background: t.bg, padding: '18px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>Consistency</span>
+              <span style={{ fontSize: 11, color: failing ? t.red : passing ? t.green : t.muted, fontWeight: 600 }}>
+                {totalPnl <= 0 ? '—' : failing ? 'FAILING' : 'PASSING'}
+              </span>
             </div>
-
-            {/* Arc gauge */}
-            <div style={{ textAlign: 'center', margin: '8px 0 16px' }}>
-              <ArcGauge pct={totalPnl > 0 ? conPct : 0} color={conColor} size={160} t={t} />
-              <div style={{ marginTop: -4, fontSize: 28, fontWeight: 800, color: conColor, letterSpacing: -1 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 24, fontWeight: 800, color: conColor, letterSpacing: -0.6 }}>
                 {totalPnl > 0 ? `${conPct.toFixed(1)}%` : '—'}
-              </div>
-              <div style={{ fontSize: 11, color: t.muted, marginTop: 2 }}>of 50% maximum</div>
+              </span>
+              <span style={{ fontSize: 12, color: t.muted }}>of 50% cap</span>
             </div>
-
+            <div style={{ position: 'relative', height: 4, background: t.inputBg, borderRadius: 2, overflow: 'hidden', marginBottom: 12 }}>
+              <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: t.muted, opacity: 0.5, zIndex: 1 }} />
+              <div style={{ width: `${Math.min(100, conPct)}%`, height: '100%', background: conColor, transition: 'width 0.5s' }} />
+            </div>
             {failing && (
-              <div style={{ background: t.redDim, border: `1px solid ${t.redBorder}`, borderRadius: 12, padding: '14px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: t.red, marginBottom: 6 }}>Earn {fmt(neededMore)} more to fix</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                  {[
-                    { l: 'Best day', v: fmt(bestDayTotal) },
-                    { l: 'Total now', v: fmt(totalPnl) },
-                    { l: 'Need total', v: fmt(bestDayTotal * 2) },
-                  ].map((s, i) => (
-                    <div key={i} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: '8px 10px' }}>
-                      <div style={{ fontSize: 10, color: t.muted, marginBottom: 2 }}>{s.l}</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{s.v}</div>
-                    </div>
-                  ))}
-                </div>
+              <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.5 }}>
+                Earn <span style={{ color: t.red, fontWeight: 600 }}>{fmt(neededMore)}</span> more across other days. Cap each day at <span style={{ color: t.text, fontWeight: 600 }}>{fmt(bestDayTotal)}</span>.
               </div>
             )}
-
             {passing && (
-              <div style={{ background: t.greenDim, border: `1px solid ${t.greenBorder}`, borderRadius: 12, padding: '12px 14px', fontSize: 13, color: t.green }}>
-                Max single day allowed: <strong>{fmt(maxBestDay)}</strong>
+              <div style={{ fontSize: 12, color: t.muted }}>
+                Max single day: <span style={{ color: t.text, fontWeight: 600 }}>{fmt(maxBestDay)}</span>
               </div>
             )}
+            {totalPnl <= 0 && <div style={{ fontSize: 12, color: t.muted }}>Log trades to track</div>}
+          </div>
 
-            {totalPnl <= 0 && (
-              <div style={{ textAlign: 'center', fontSize: 13, color: t.muted, padding: '10px 0' }}>
-                Log trades to track consistency
-              </div>
-            )}
-          </GlassCard>
-
-          {/* MLL */}
-          <GlassCard t={t} style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 2 }}>Max Loss Limit</div>
-                <div style={{ fontSize: 12, color: t.muted }}>
-                  EOD trailing · {mllLocked ? 'Locked ✓' : 'Active — floor rises with you'}
-                </div>
-              </div>
-              <StatusBadge
-                text={mllBuffer <= 0 ? 'BREACHED' : mllPct < 25 ? 'DANGER' : mllPct < 50 ? 'CAUTION' : 'SAFE'}
-                color={mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green}
-                bg={mllPct < 25 ? t.redDim : mllPct < 50 ? t.amberDim : t.greenDim}
-              />
+          <div style={{ background: t.bg, padding: '18px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>Max Loss Limit</span>
+              <span style={{ fontSize: 11, color: mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green, fontWeight: 600 }}>
+                {mllPct < 25 ? 'DANGER' : mllPct < 50 ? 'CAUTION' : 'SAFE'}
+              </span>
             </div>
-
-            {/* Risk visualization */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, color: t.muted }}>Distance to floor</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{fmt(mllBuffer)}</span>
-              </div>
-              <div style={{ position: 'relative', height: 10, borderRadius: 99, overflow: 'hidden', background: t.inputBg }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '25%', background: 'rgba(255,77,106,0.08)' }} />
-                <div style={{ position: 'absolute', left: '25%', top: 0, bottom: 0, width: '25%', background: 'rgba(255,176,32,0.06)' }} />
-                <div style={{
-                  width: `${mllPct}%`, height: '100%', borderRadius: 99,
-                  background: mllPct < 25 ? `linear-gradient(90deg, ${t.red}, #ff6b84)` : mllPct < 50 ? `linear-gradient(90deg, ${t.amber}, #ffc84d)` : `linear-gradient(90deg, ${t.green}, #33e8aa)`,
-                  transition: 'width 0.6s cubic-bezier(0.16,1,0.3,1)', boxShadow: `0 0 12px ${mllPct < 25 ? 'rgba(255,77,106,0.3)' : mllPct < 50 ? 'rgba(255,176,32,0.3)' : 'rgba(0,214,143,0.2)'}`,
-                }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                <span style={{ fontSize: 10, color: t.red, fontWeight: 600 }}>${mllFloor.toLocaleString()}</span>
-                <span style={{ fontSize: 10, color: t.muted }}>${highWaterMark.toLocaleString()}</span>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 24, fontWeight: 800, color: mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green, letterSpacing: -0.6 }}>
+                {fmt(mllBuffer)}
+              </span>
+              <span style={{ fontSize: 12, color: t.muted }}>buffer</span>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              <div style={{ background: t.inputBg, borderRadius: 12, padding: '12px 14px', border: `1px solid ${t.border}` }}>
-                <div style={{ fontSize: 10, color: t.muted, fontWeight: 500, marginBottom: 4, letterSpacing: 0.3, textTransform: 'uppercase' }}>Floor</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: t.red, letterSpacing: -0.5 }}>${mllFloor.toLocaleString()}</div>
-              </div>
-              <div style={{ background: t.inputBg, borderRadius: 12, padding: '12px 14px', border: `1px solid ${t.border}` }}>
-                <div style={{ fontSize: 10, color: t.muted, fontWeight: 500, marginBottom: 4, letterSpacing: 0.3, textTransform: 'uppercase' }}>Peak EOD</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: t.text, letterSpacing: -0.5 }}>${highWaterMark.toLocaleString()}</div>
-              </div>
-              <div style={{
-                background: mllPct < 25 ? t.redDim : mllPct < 50 ? t.amberDim : t.greenDim,
-                borderRadius: 12, padding: '12px 14px',
-                border: `1px solid ${mllPct < 25 ? t.redBorder : mllPct < 50 ? 'rgba(255,176,32,0.2)' : t.greenBorder}`,
-              }}>
-                <div style={{ fontSize: 10, color: t.muted, fontWeight: 500, marginBottom: 4, letterSpacing: 0.3, textTransform: 'uppercase' }}>Buffer</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green, letterSpacing: -0.5 }}>
-                  {fmt(mllBuffer)}
-                </div>
-              </div>
+            <div style={{ position: 'relative', height: 4, background: t.inputBg, borderRadius: 2, overflow: 'hidden', marginBottom: 12 }}>
+              <div style={{ width: `${mllPct}%`, height: '100%', background: mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green, transition: 'width 0.5s' }} />
             </div>
-
-            {!mllLocked && (
-              <div style={{ marginTop: 12, padding: '8px 12px', background: t.inputBg, borderRadius: 8, border: `1px solid ${t.border}`, fontSize: 11, color: t.muted, lineHeight: 1.6 }}>
-                Locks at <strong style={{ color: t.text }}>${ITB.toLocaleString()}</strong> EOD close — {computedBalance >= ITB ? 'reached ✓' : `${fmt(ITB - computedBalance)} away`}
-              </div>
-            )}
-          </GlassCard>
+            <div style={{ fontSize: 12, color: t.muted, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Floor <span style={{ color: t.text, fontWeight: 600 }}>${mllFloor.toLocaleString()}</span></span>
+              <span>Peak <span style={{ color: t.text, fontWeight: 600 }}>${highWaterMark.toLocaleString()}</span></span>
+            </div>
+          </div>
         </div>
 
-        {/* ── Equity Curve + Metrics ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 14, marginBottom: 16 }}>
-
-        <GlassCard t={t} style={{ padding: '24px' }}>
+        {/* ── Equity Curve + Metrics inline ── */}
+        <div style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: '20px', marginBottom: 24, background: t.bg }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Equity Curve</div>
-              <div style={{ fontSize: 12, color: t.muted }}>Trade-by-trade performance</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: t.muted }}>
-              <span style={{ width: 16, height: 2, background: t.green, display: 'inline-block', borderRadius: 1 }} />
-              $3k target
-            </div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Equity Curve</span>
+            {metrics && (
+              <div style={{ display: 'flex', gap: 18, fontSize: 11 }}>
+                <span><span style={{ color: t.muted }}>Win </span><span style={{ color: metrics.winRate >= 50 ? t.green : t.red, fontWeight: 600 }}>{metrics.winRate.toFixed(0)}%</span></span>
+                <span><span style={{ color: t.muted }}>PF </span><span style={{ color: metrics.profitFactor >= 1.5 ? t.green : metrics.profitFactor >= 1 ? t.amber : t.red, fontWeight: 600 }}>{metrics.profitFactor === Infinity ? '∞' : metrics.profitFactor.toFixed(2)}</span></span>
+                <span><span style={{ color: t.muted }}>Exp </span><span style={{ color: metrics.expectancy >= 0 ? t.green : t.red, fontWeight: 600 }}>{metrics.expectancy >= 0 ? '+' : ''}{fmt(metrics.expectancy)}</span></span>
+                <span><span style={{ color: t.muted }}>R:R </span><span style={{ color: t.text, fontWeight: 600 }}>{metrics.avgRR > 0 ? metrics.avgRR.toFixed(1) : '—'}</span></span>
+                <span><span style={{ color: t.muted }}>DD </span><span style={{ color: t.text, fontWeight: 600 }}>{fmt(metrics.maxDD)}</span></span>
+                <span><span style={{ color: t.muted }}>Streak </span><span style={{ color: metrics.streakType ? t.green : t.red, fontWeight: 600 }}>{metrics.streak}{metrics.streakType ? 'W' : 'L'}</span></span>
+              </div>
+            )}
           </div>
           {chartData.length < 2 ? (
-            <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.inputBg, borderRadius: 12, border: `1px dashed ${t.border}` }}>
-              <span style={{ fontSize: 13, color: t.muted }}>Add 2+ trades to see the equity curve</span>
-            </div>
+            <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: t.muted }}>Add 2+ trades to see the curve</div>
           ) : (
-            <div style={{ height: 240 }}>
+            <div style={{ height: 180 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#636bff" stopOpacity={0.25} />
-                      <stop offset="50%" stopColor="#636bff" stopOpacity={0.05} />
+                    <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#636bff" stopOpacity={0.2} />
                       <stop offset="100%" stopColor="#636bff" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 4" stroke={t.border} vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: t.muted, fontFamily: FONT }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: t.muted, fontFamily: FONT }} axisLine={false} tickLine={false} tickFormatter={v => `$${v >= 1000 ? (v/1000).toFixed(1)+'k' : v}`} width={42} />
+                  <CartesianGrid strokeDasharray="2 4" stroke={t.border} vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: t.muted }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: t.muted }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(1)}k` : `$${v}`} width={40} />
                   <Tooltip content={<ChartTooltip t={t} />} />
-                  <ReferenceLine y={TARGET} stroke={t.green} strokeDasharray="6 4" strokeWidth={1} strokeOpacity={0.6} />
+                  <ReferenceLine y={TARGET} stroke={t.green} strokeDasharray="4 4" strokeWidth={1} strokeOpacity={0.5} />
                   <ReferenceLine y={0} stroke={t.border} />
-                  <Area type="monotone" dataKey="cumulative" stroke="#636bff" strokeWidth={2.5}
-                    fill="url(#chartGrad)"
-                    dot={{ fill: '#636bff', r: 3, stroke: t.cardSolid, strokeWidth: 2 }}
-                    activeDot={{ r: 6, fill: '#636bff', stroke: t.cardSolid, strokeWidth: 2, style: { filter: 'drop-shadow(0 0 6px rgba(99,107,255,0.5))' } }}
-                  />
+                  <Area type="monotone" dataKey="cumulative" stroke="#636bff" strokeWidth={2} fill="url(#cg)" dot={false} activeDot={{ r: 4, fill: '#636bff' }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           )}
-        </GlassCard>
-
-        {/* ── Performance Metrics ── */}
-        <GlassCard t={t} style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 4 }}>Performance</div>
-          <div style={{ fontSize: 12, color: t.muted, marginBottom: 16 }}>{days.length} trade{days.length !== 1 ? 's' : ''} logged</div>
-
-          {!metrics ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: 13, color: t.muted }}>Log trades to see metrics</span>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-
-              {/* Win rate bar */}
-              <div style={{ background: t.inputBg, borderRadius: 12, padding: '14px 16px', border: `1px solid ${t.border}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, color: t.textSec }}>Win rate</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: metrics.winRate >= 50 ? t.green : t.red }}>{metrics.winRate.toFixed(0)}%</span>
-                </div>
-                <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', height: 8 }}>
-                  <div style={{ width: `${metrics.winRate}%`, background: t.green, transition: 'width 0.5s' }} />
-                  <div style={{ flex: 1, background: t.red + '44' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                  <span style={{ fontSize: 10, color: t.green }}>{metrics.wins}W</span>
-                  <span style={{ fontSize: 10, color: t.red }}>{metrics.losses}L</span>
-                </div>
-              </div>
-
-              {/* Metric grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, flex: 1 }}>
-                {[
-                  { l: 'Profit factor', v: metrics.profitFactor === Infinity ? '∞' : metrics.profitFactor.toFixed(2), c: metrics.profitFactor >= 1.5 ? t.green : metrics.profitFactor >= 1 ? t.amber : t.red },
-                  { l: 'Expectancy', v: (metrics.expectancy >= 0 ? '+' : '') + fmt(metrics.expectancy), c: metrics.expectancy >= 0 ? t.green : t.red },
-                  { l: 'Avg win', v: '+' + fmt(metrics.avgWin), c: t.green },
-                  { l: 'Avg loss', v: '-' + fmt(metrics.avgLoss), c: t.red },
-                  { l: 'Avg R:R', v: metrics.avgRR > 0 ? metrics.avgRR.toFixed(2) : '—', c: metrics.avgRR >= 1.5 ? t.green : metrics.avgRR >= 1 ? t.text : t.red },
-                  { l: 'Max drawdown', v: fmt(metrics.maxDD), c: metrics.maxDD > 1000 ? t.red : metrics.maxDD > 500 ? t.amber : t.text },
-                  { l: 'Best trade', v: bestTrade > 0 ? '+' + fmt(bestTrade) : '—', c: t.green },
-                  { l: 'Worst trade', v: metrics.worstTrade < 0 ? fmt(metrics.worstTrade) : '—', c: t.red },
-                ].map((m, i) => (
-                  <div key={i} style={{ background: t.inputBg, borderRadius: 10, padding: '10px 12px', border: `1px solid ${t.border}` }}>
-                    <div style={{ fontSize: 10, color: t.muted, fontWeight: 500, marginBottom: 4, letterSpacing: 0.3, textTransform: 'uppercase' }}>{m.l}</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: m.c, letterSpacing: -0.5 }}>{m.v}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Streak */}
-              <div style={{
-                background: metrics.streakType ? t.greenDim : t.redDim,
-                border: `1px solid ${metrics.streakType ? t.greenBorder : t.redBorder}`,
-                borderRadius: 10, padding: '10px 14px',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
-                <span style={{ fontSize: 12, color: t.textSec }}>Current streak</span>
-                <span style={{ fontSize: 14, fontWeight: 800, color: metrics.streakType ? t.green : t.red }}>
-                  {metrics.streak}{metrics.streakType ? 'W' : 'L'} {metrics.streakType ? '🔥' : ''}
-                </span>
-              </div>
-            </div>
-          )}
-        </GlassCard>
-
         </div>
 
-        {/* ── Daily Log + Calculator ── */}
+        {/* ── Trade Log + Calc ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
 
-        <GlassCard t={t} style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Trade Log</div>
-              <div style={{ fontSize: 12, color: t.muted }}>{days.length} trade{days.length !== 1 ? 's' : ''} · {tradingDays} day{tradingDays !== 1 ? 's' : ''}</div>
+          {/* Trade Log */}
+          <div style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: '20px', background: t.bg }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Trade Log</span>
+              <span style={{ fontSize: 11, color: t.muted }}>{days.length} trades · {tradingDays} days</span>
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-            <input style={{ ...inp, flex: '1 1 140px', fontSize: 13, minWidth: 0 }} placeholder="e.g. NQ long, ES scalp" value={labelInput} onChange={e => setLabelInput(e.target.value)}
-              onFocus={e => e.target.style.borderColor = t.blue + '66'} onBlur={e => e.target.style.borderColor = t.border} />
-            <input style={{ ...inp, width: 90, fontSize: 13 }} placeholder="P&L $" type="number" value={pnlInput}
-              onChange={e => setPnlInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTrade()}
-              onFocus={e => e.target.style.borderColor = t.blue + '66'} onBlur={e => e.target.style.borderColor = t.border} />
-            <input style={{ ...inp, width: 130, fontSize: 12, color: dateInput ? t.text : t.muted }} type="date" value={dateInput}
-              onChange={e => setDateInput(e.target.value)}
-              onFocus={e => e.target.style.borderColor = t.blue + '66'} onBlur={e => e.target.style.borderColor = t.border} />
-            <button onClick={addTrade} style={{
-              padding: '10px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: t.accent, color: '#fff', fontWeight: 700, fontSize: 13, fontFamily: FONT,
-              boxShadow: '0 2px 12px rgba(99,107,255,0.25)', transition: 'transform 0.1s',
-            }}
-              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.96)'}
-              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-            >Add</button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 340, overflowY: 'auto' }}>
-            {days.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 13, color: t.muted }}>No trades logged yet — add your first trade above</div>
-            ) : (
-              [...dailyGroups].reverse().map(group => {
-                const isBestDay = group.date === bestDayDate && bestDayTotal > 0
-                const d = group.date !== 'undated' ? new Date(group.date + 'T12:00:00') : null
-                const dayLabel = d ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Undated'
-                return (
-                  <div key={group.date}>
-                    {/* Day header */}
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '8px 12px', borderRadius: 10,
-                      background: isBestDay ? 'rgba(255,176,32,0.06)' : t.inputBg,
-                      border: `1px solid ${isBestDay ? 'rgba(255,176,32,0.15)' : t.border}`,
-                      marginBottom: 4,
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {isBestDay && <span style={{ fontSize: 9, fontWeight: 800, color: t.amber, background: t.amberDim, padding: '2px 7px', borderRadius: 4, letterSpacing: 0.5 }}>BEST DAY</span>}
-                        <span style={{ fontSize: 12, fontWeight: 700, color: t.text }}>{dayLabel}</span>
-                        <span style={{ fontSize: 11, color: t.muted }}>{group.trades.length} trade{group.trades.length !== 1 ? 's' : ''}</span>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+              <input style={{ ...inp, flex: '1 1 120px', fontSize: 12, padding: '8px 10px', minWidth: 0 }} placeholder="e.g. NQ long" value={labelInput} onChange={e => setLabelInput(e.target.value)} />
+              <input style={{ ...inp, width: 80, fontSize: 12, padding: '8px 10px' }} placeholder="$" type="number" value={pnlInput} onChange={e => setPnlInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTrade()} />
+              <input style={{ ...inp, width: 120, fontSize: 11, padding: '8px 10px' }} type="date" value={dateInput} onChange={e => setDateInput(e.target.value)} />
+              <button onClick={addTrade} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', background: t.accent, color: '#fff', fontWeight: 600, fontSize: 12, fontFamily: FONT }}>Add</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 320, overflowY: 'auto' }}>
+              {days.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 12, color: t.muted }}>No trades yet</div>
+              ) : (
+                [...dailyGroups].reverse().map(group => {
+                  const isBestDay = group.date === bestDayDate && bestDayTotal > 0
+                  const d = group.date !== 'undated' ? new Date(group.date + 'T12:00:00') : null
+                  const dayLabel = d ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Undated'
+                  return (
+                    <div key={group.date} style={{ marginBottom: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${t.border}`, marginBottom: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {isBestDay && <span style={{ fontSize: 9, fontWeight: 700, color: t.amber, letterSpacing: 0.5 }}>★ BEST</span>}
+                          <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{dayLabel}</span>
+                          <span style={{ fontSize: 10, color: t.muted }}>{group.trades.length}</span>
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: group.total >= 0 ? t.green : t.red, fontVariantNumeric: 'tabular-nums' }}>
+                          {group.total >= 0 ? '+' : ''}{fmt(group.total)}
+                        </span>
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: group.total >= 0 ? t.green : t.red, fontVariantNumeric: 'tabular-nums' }}>
-                        {group.total >= 0 ? '+' : ''}{fmt(group.total)}
-                      </span>
-                    </div>
-                    {/* Trades under this day */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, paddingLeft: 12, marginBottom: 2 }}>
-                      {group.trades.map(d => (
-                        <div key={d._idx} style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '6px 12px', borderRadius: 8,
-                          borderLeft: `2px solid ${d.pnl >= 0 ? t.green + '44' : t.red + '44'}`,
-                          background: 'transparent',
-                        }}>
-                          <span style={{ fontSize: 12, color: t.textSec, fontWeight: 500 }}>{d.label || `Trade`}</span>
+                      {group.trades.map(td => (
+                        <div key={td._idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', borderRadius: 4 }}>
+                          <span style={{ fontSize: 12, color: t.textSec }}>{td.label || 'Trade'}</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: d.pnl >= 0 ? t.green : t.red, fontVariantNumeric: 'tabular-nums' }}>
-                              {d.pnl >= 0 ? '+' : ''}{fmt(d.pnl)}
-                            </span>
-                            <button onClick={() => setDaysSave(p => p.filter((_,j) => j !== d._idx))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.muted, fontSize: 14, padding: 0, lineHeight: 1, transition: 'color 0.15s', opacity: 0.5 }}
-                              onMouseEnter={e => { e.currentTarget.style.color = t.red; e.currentTarget.style.opacity = '1' }}
-                              onMouseLeave={e => { e.currentTarget.style.color = t.muted; e.currentTarget.style.opacity = '0.5' }}
+                            <span style={{ fontSize: 12, fontWeight: 600, color: td.pnl >= 0 ? t.green : t.red, fontVariantNumeric: 'tabular-nums' }}>{td.pnl >= 0 ? '+' : ''}{fmt(td.pnl)}</span>
+                            <button onClick={() => setDaysSave(p => p.filter((_,j) => j !== td._idx))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.muted, fontSize: 13, padding: 0, lineHeight: 1, opacity: 0.4 }}
+                              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = t.red }}
+                              onMouseLeave={e => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = t.muted }}
                             >×</button>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )
-              })
-            )}
+                  )
+                })
+              )}
+            </div>
           </div>
-        </GlassCard>
 
-        {/* ── Contract Size Calculator ── */}
-        <ContractCalc t={t} inp={inp} />
-
+          {/* Calc */}
+          <ContractCalc t={t} inp={inp} />
         </div>
       </div>
     </div>
