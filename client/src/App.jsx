@@ -18,15 +18,15 @@ const DARK = {
   pin: 'rgba(255,255,255,0.06)', pinText: '#e4e5ea',
 }
 const LIGHT = {
-  bg: '#4a4135', bgSub: '#403729', surface: '#574b3c', surfaceHover: '#5f5341',
-  card: 'rgba(87,75,60,0.85)', cardSolid: '#574b3c', border: 'rgba(220,200,160,0.12)',
-  borderHover: 'rgba(220,200,160,0.22)', text: '#e6d8b0', textSec: '#b3a37e', muted: '#7d7058',
-  green: '#7cc190', greenDim: 'rgba(124,193,144,0.14)', greenBorder: 'rgba(124,193,144,0.28)',
-  red: '#e08878', redDim: 'rgba(224,136,120,0.14)', redBorder: 'rgba(224,136,120,0.28)',
-  blue: '#a89cdc', blueDim: 'rgba(168,156,220,0.14)', accent: 'linear-gradient(135deg, #a89cdc, #c39cdc)',
-  amber: '#e0b070', amberDim: 'rgba(224,176,112,0.14)',
-  inputBg: 'rgba(220,200,160,0.06)', glow: '0 0 40px rgba(168,156,220,0.07)',
-  pin: 'rgba(220,200,160,0.08)', pinText: '#e6d8b0',
+  bg: '#d8cdb0', bgSub: '#cec3a4', surface: '#e1d7bd', surfaceHover: '#dbd0b3',
+  card: 'rgba(225,215,189,0.85)', cardSolid: '#e1d7bd', border: 'rgba(60,45,25,0.14)',
+  borderHover: 'rgba(60,45,25,0.24)', text: '#2a2015', textSec: '#5a4e3a', muted: '#8a7d65',
+  green: '#2d8a5a', greenDim: 'rgba(45,138,90,0.12)', greenBorder: 'rgba(45,138,90,0.30)',
+  red: '#b04545', redDim: 'rgba(176,69,69,0.12)', redBorder: 'rgba(176,69,69,0.30)',
+  blue: '#4a52c0', blueDim: 'rgba(74,82,192,0.10)', accent: 'linear-gradient(135deg, #4a52c0, #7a4ec0)',
+  amber: '#a8651a', amberDim: 'rgba(168,101,26,0.12)',
+  inputBg: 'rgba(60,45,25,0.06)', glow: '0 0 40px rgba(74,82,192,0.05)',
+  pin: 'rgba(60,45,25,0.07)', pinText: '#2a2015',
 }
 
 // ─── Constants & Helpers ──────────────────────────────────────────────────────
@@ -561,7 +561,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
       <header style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '12px 20px', borderBottom: `1px solid ${t.border}`,
-        background: dark ? 'rgba(10,11,16,0.85)' : 'rgba(74,65,53,0.85)',
+        background: dark ? 'rgba(10,11,16,0.85)' : 'rgba(216,205,176,0.85)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         position: 'sticky', top: 0, zIndex: 20,
       }}>
