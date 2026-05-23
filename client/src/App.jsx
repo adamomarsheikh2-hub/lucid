@@ -18,15 +18,15 @@ const DARK = {
   pin: 'rgba(255,255,255,0.06)', pinText: '#e4e5ea',
 }
 const LIGHT = {
-  bg: '#f4f5f7', bgSub: '#eef0f3', surface: '#ffffff', surfaceHover: '#f8f9fb',
-  card: 'rgba(255,255,255,0.85)', cardSolid: '#ffffff', border: 'rgba(0,0,0,0.07)',
-  borderHover: 'rgba(0,0,0,0.12)', text: '#111318', textSec: '#5f6270', muted: '#9a9caa',
-  green: '#00b377', greenDim: 'rgba(0,179,119,0.1)', greenBorder: 'rgba(0,179,119,0.25)',
-  red: '#e53e5c', redDim: 'rgba(229,62,92,0.1)', redBorder: 'rgba(229,62,92,0.25)',
-  blue: '#4f56e8', blueDim: 'rgba(79,86,232,0.08)', accent: 'linear-gradient(135deg, #4f56e8, #8f56e8)',
-  amber: '#e5960f', amberDim: 'rgba(229,150,15,0.1)',
-  inputBg: 'rgba(0,0,0,0.03)', glow: '0 0 40px rgba(79,86,232,0.06)',
-  pin: 'rgba(0,0,0,0.05)', pinText: '#111318',
+  bg: '#f7f1e3', bgSub: '#f0e9d6', surface: '#fdfaf0', surfaceHover: '#f5eedb',
+  card: 'rgba(253,250,240,0.85)', cardSolid: '#fdfaf0', border: 'rgba(101,77,42,0.10)',
+  borderHover: 'rgba(101,77,42,0.18)', text: '#2a241a', textSec: '#6b5f4c', muted: '#a89d87',
+  green: '#0f9460', greenDim: 'rgba(15,148,96,0.10)', greenBorder: 'rgba(15,148,96,0.25)',
+  red: '#c4344c', redDim: 'rgba(196,52,76,0.10)', redBorder: 'rgba(196,52,76,0.25)',
+  blue: '#5a52d4', blueDim: 'rgba(90,82,212,0.08)', accent: 'linear-gradient(135deg, #5a52d4, #8a52d4)',
+  amber: '#c2780b', amberDim: 'rgba(194,120,11,0.10)',
+  inputBg: 'rgba(101,77,42,0.05)', glow: '0 0 40px rgba(90,82,212,0.05)',
+  pin: 'rgba(101,77,42,0.06)', pinText: '#2a241a',
 }
 
 // ─── Constants & Helpers ──────────────────────────────────────────────────────
@@ -561,7 +561,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
       <header style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '12px 20px', borderBottom: `1px solid ${t.border}`,
-        background: dark ? 'rgba(10,11,16,0.85)' : 'rgba(245,246,248,0.85)',
+        background: dark ? 'rgba(10,11,16,0.85)' : 'rgba(247,241,227,0.85)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         position: 'sticky', top: 0, zIndex: 20,
       }}>
@@ -689,30 +689,79 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(220px, 1fr)', gap: 14, marginBottom: 24 }}>
 
           {/* Chart */}
-          <div style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: '20px', background: t.bg }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Equity Curve</span>
-              <span style={{ fontSize: 11, color: t.muted }}>{days.length} trades · {tradingDays} days</span>
+          <div style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: '20px', background: t.bg, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Equity Curve</div>
+                <div style={{ fontSize: 11, color: t.muted, marginTop: 2 }}>
+                  Last: <span style={{ color: totalPnl >= 0 ? t.green : t.red, fontWeight: 600 }}>{totalPnl >= 0 ? '+' : ''}{fmt(totalPnl)}</span>
+                  <span style={{ margin: '0 8px', color: t.border }}>·</span>
+                  Peak: <span style={{ color: t.text, fontWeight: 600 }}>{fmt(Math.max(0, ...chartData.map(d => d.cumulative)))}</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 10, color: t.muted }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 10, height: 2, background: '#636bff', borderRadius: 1, display: 'inline-block' }} />
+                  Equity
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 10, borderTop: `1.5px dashed ${t.green}`, display: 'inline-block' }} />
+                  Target
+                </span>
+              </div>
             </div>
             {chartData.length < 2 ? (
-              <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: t.muted }}>Add 2+ trades to see the curve</div>
+              <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: t.muted }}>Add 2+ trades to see the curve</div>
             ) : (
-              <div style={{ height: 220 }}>
+              <div style={{ height: 260, marginTop: 14, marginLeft: -8, marginRight: -8 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
+                  <AreaChart data={chartData} margin={{ top: 16, right: 24, left: 8, bottom: 4 }}>
                     <defs>
-                      <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#636bff" stopOpacity={0.2} />
+                      <linearGradient id="cgPos" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#636bff" stopOpacity={0.35} />
+                        <stop offset="60%" stopColor="#636bff" stopOpacity={0.08} />
                         <stop offset="100%" stopColor="#636bff" stopOpacity={0} />
                       </linearGradient>
+                      <linearGradient id="cgStroke" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#7c5fea" />
+                        <stop offset="100%" stopColor="#636bff" />
+                      </linearGradient>
+                      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                        <feMerge>
+                          <feMergeNode in="coloredBlur"/>
+                          <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                      </filter>
                     </defs>
-                    <CartesianGrid strokeDasharray="2 4" stroke={t.border} vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: t.muted }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: t.muted }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(1)}k` : `$${v}`} width={40} />
-                    <Tooltip content={<ChartTooltip t={t} />} />
-                    <ReferenceLine y={TARGET} stroke={t.green} strokeDasharray="4 4" strokeWidth={1} strokeOpacity={0.5} />
-                    <ReferenceLine y={0} stroke={t.border} />
-                    <Area type="monotone" dataKey="cumulative" stroke="#636bff" strokeWidth={2} fill="url(#cg)" dot={false} activeDot={{ r: 4, fill: '#636bff' }} />
+                    <CartesianGrid strokeDasharray="2 6" stroke={t.border} vertical={false} strokeOpacity={0.6} />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 10, fill: t.muted, fontFamily: FONT }}
+                      axisLine={false}
+                      tickLine={false}
+                      dy={6}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: t.muted, fontFamily: FONT }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(1)}k` : v <= -1000 ? `-$${Math.abs(v/1000).toFixed(1)}k` : `$${v}`}
+                      width={46}
+                      dx={-4}
+                    />
+                    <Tooltip content={<ChartTooltip t={t} />} cursor={{ stroke: t.muted, strokeWidth: 1, strokeDasharray: '3 3', strokeOpacity: 0.4 }} />
+                    <ReferenceLine y={TARGET} stroke={t.green} strokeDasharray="5 5" strokeWidth={1.2} strokeOpacity={0.7} label={{ value: '$3k', position: 'right', fill: t.green, fontSize: 10, fontWeight: 600, offset: 6 }} />
+                    <ReferenceLine y={0} stroke={t.border} strokeWidth={1} />
+                    <Area
+                      type="monotone"
+                      dataKey="cumulative"
+                      stroke="url(#cgStroke)"
+                      strokeWidth={2.5}
+                      fill="url(#cgPos)"
+                      dot={{ fill: t.bg, stroke: '#636bff', strokeWidth: 2, r: 3 }}
+                      activeDot={{ r: 6, fill: '#636bff', stroke: t.bg, strokeWidth: 2, filter: 'url(#glow)' }}
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
