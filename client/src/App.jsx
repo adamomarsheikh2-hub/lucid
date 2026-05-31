@@ -544,6 +544,8 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const statusColor = accountStatus === 'READY TO PASS' ? t.green : accountStatus === 'FIX CONSISTENCY' || accountStatus === 'AT RISK' ? t.red : t.blue
   const statusBg = accountStatus === 'READY TO PASS' ? t.greenDim : accountStatus === 'FIX CONSISTENCY' || accountStatus === 'AT RISK' ? t.redDim : t.blueDim
 
+  const chartColor = totalPnl >= TARGET ? t.green : totalPnl < 0 ? t.red : t.blue
+  const chartColorFrom = totalPnl >= TARGET ? '#2ab87a' : totalPnl < 0 ? '#e04060' : '#9f6bff'
   const inp = { padding: '10px 12px', borderRadius: 10, border: `1px solid ${t.border}`, fontSize: 14, color: t.text, background: t.inputBg, outline: 'none', fontFamily: FONT, boxSizing: 'border-box', transition: 'border-color 0.15s' }
 
   const conColor = failing ? t.red : passing ? t.green : t.blue
@@ -718,18 +720,25 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
                   <AreaChart data={chartData} margin={{ top: 16, right: 24, left: 8, bottom: 4 }}>
                     <defs>
                       <linearGradient id="cgPos" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={t.blue} stopOpacity={0.35} />
-                        <stop offset="60%" stopColor={t.blue} stopOpacity={0.08} />
-                        <stop offset="100%" stopColor={t.blue} stopOpacity={0} />
+                        <stop offset="0%" stopColor={chartColor} stopOpacity={0.5} />
+                        <stop offset="40%" stopColor={chartColor} stopOpacity={0.18} />
+                        <stop offset="100%" stopColor={chartColor} stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="cgStroke" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor={t.blue} stopOpacity={0.9} />
-                        <stop offset="100%" stopColor={t.blue} />
+                        <stop offset="0%" stopColor={chartColorFrom} stopOpacity={0.8} />
+                        <stop offset="100%" stopColor={chartColor} />
                       </linearGradient>
-                      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                      <filter id="lineGlow" x="-10%" y="-80%" width="120%" height="260%">
+                        <feGaussianBlur stdDeviation="4" result="blur"/>
                         <feMerge>
-                          <feMergeNode in="coloredBlur"/>
+                          <feMergeNode in="blur"/>
+                          <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                      </filter>
+                      <filter id="dotGlow" x="-100%" y="-100%" width="300%" height="300%">
+                        <feGaussianBlur stdDeviation="3" result="blur"/>
+                        <feMerge>
+                          <feMergeNode in="blur"/>
                           <feMergeNode in="SourceGraphic"/>
                         </feMerge>
                       </filter>
@@ -753,14 +762,30 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
                     <Tooltip content={<ChartTooltip t={t} />} cursor={{ stroke: t.muted, strokeWidth: 1, strokeDasharray: '3 3', strokeOpacity: 0.4 }} />
                     <ReferenceLine y={TARGET} stroke={t.green} strokeDasharray="5 5" strokeWidth={1.2} strokeOpacity={0.7} label={{ value: '$3k', position: 'right', fill: t.green, fontSize: 10, fontWeight: 600, offset: 6 }} />
                     <ReferenceLine y={0} stroke={t.border} strokeWidth={1} />
+                    {/* Glow halo layer */}
+                    <Area
+                      type="monotone"
+                      dataKey="cumulative"
+                      stroke={chartColor}
+                      strokeWidth={7}
+                      fill="none"
+                      dot={false}
+                      activeDot={false}
+                      strokeOpacity={0.18}
+                    />
+                    {/* Main line */}
                     <Area
                       type="monotone"
                       dataKey="cumulative"
                       stroke="url(#cgStroke)"
                       strokeWidth={2.5}
                       fill="url(#cgPos)"
-                      dot={{ fill: t.bg, stroke: t.blue, strokeWidth: 2, r: 3 }}
-                      activeDot={{ r: 6, fill: t.blue, stroke: t.bg, strokeWidth: 2, filter: 'url(#glow)' }}
+                      dot={(props) => {
+                        const { cx, cy, index } = props
+                        if (index !== chartData.length - 1) return null
+                        return <circle key="last" cx={cx} cy={cy} r={5} fill={chartColor} stroke={t.bg} strokeWidth={2} filter="url(#dotGlow)" />
+                      }}
+                      activeDot={{ r: 7, fill: chartColor, stroke: t.bg, strokeWidth: 2.5, filter: 'url(#dotGlow)' }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
