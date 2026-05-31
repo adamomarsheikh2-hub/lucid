@@ -755,13 +755,12 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
                       tick={{ fontSize: 10, fill: t.muted, fontFamily: FONT }}
                       axisLine={false}
                       tickLine={false}
-                      tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(1)}k` : v <= -1000 ? `-$${Math.abs(v/1000).toFixed(1)}k` : `$${v}`}
+                      tickFormatter={v => { const a = Math.abs(v), s = v < 0 ? '-' : ''; return a >= 1000 ? `${s}$${(a/1000).toFixed(1)}k` : `${s}$${a}` }}
+                      domain={[dataMin => Math.min(0, Math.floor(dataMin * 1.15)), dataMax => Math.ceil(Math.max(dataMax, TARGET) * 1.1)]}
                       width={46}
                       dx={-4}
                     />
                     <Tooltip content={<ChartTooltip t={t} />} cursor={{ stroke: t.muted, strokeWidth: 1, strokeDasharray: '3 3', strokeOpacity: 0.4 }} />
-                    <ReferenceLine y={TARGET} stroke={t.green} strokeDasharray="5 5" strokeWidth={1.2} strokeOpacity={0.7} label={{ value: '$3k', position: 'right', fill: t.green, fontSize: 10, fontWeight: 600, offset: 6 }} />
-                    <ReferenceLine y={0} stroke={t.border} strokeWidth={1} />
                     {/* Glow halo layer */}
                     <Area
                       type="monotone"
@@ -787,6 +786,9 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
                       }}
                       activeDot={{ r: 7, fill: chartColor, stroke: t.bg, strokeWidth: 2.5, filter: 'url(#dotGlow)' }}
                     />
+                    {/* Reference lines on top of area fill */}
+                    <ReferenceLine y={TARGET} stroke={t.green} strokeDasharray="6 4" strokeWidth={1.5} strokeOpacity={0.85} label={{ value: '$3k', position: 'right', fill: t.green, fontSize: 10, fontWeight: 600, offset: 6 }} />
+                    <ReferenceLine y={0} stroke={t.border} strokeWidth={1} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
