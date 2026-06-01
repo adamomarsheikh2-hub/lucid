@@ -601,22 +601,61 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
 
       {/* ── Journal Sidebar ── */}
       <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
-      <div style={{
-        position: 'fixed', top: 0, bottom: 0, left: journalOpen ? 0 : -308,
-        width: 340, zIndex: 25, display: 'flex',
-        transition: 'left 0.28s cubic-bezier(0.16,1,0.3,1)',
-      }}>
-        {/* Content panel */}
-        <div style={{
-          width: 308, display: 'flex', flexDirection: 'column',
-          background: dark ? 'rgba(10,11,16,0.97)' : 'rgba(216,205,176,0.97)',
-          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+
+      {/* Tab trigger — separate element, always at left edge */}
+      <div
+        onClick={() => setJournalOpen(o => !o)}
+        onMouseEnter={e => e.currentTarget.style.background = t.surfaceHover}
+        onMouseLeave={e => e.currentTarget.style.background = t.surface}
+        style={{
+          position: 'fixed', zIndex: 26,
+          left: journalOpen ? 320 : 0,
+          top: '50%', transform: 'translateY(-50%)',
+          width: 20, height: 80,
+          background: t.surface,
+          borderTop: `1px solid ${t.border}`,
           borderRight: `1px solid ${t.border}`,
-        }}>
+          borderBottom: `1px solid ${t.border}`,
+          borderRadius: '0 8px 8px 0',
+          cursor: 'pointer',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 6,
+          transition: 'left 0.26s cubic-bezier(0.16,1,0.3,1), background 0.15s',
+        }}
+      >
+        <svg width="6" height="10" viewBox="0 0 6 10" fill="none">
+          <path d={journalOpen ? 'M5 1L1 5L5 9' : 'M1 1L5 5L1 9'}
+            stroke={journalOpen ? t.blue : t.muted}
+            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transition: 'stroke 0.15s' }}
+          />
+        </svg>
+        {journal.length > 0 && (
+          <span style={{ width: 4, height: 4, borderRadius: '50%', background: t.blue, display: 'block' }} />
+        )}
+      </div>
+
+      {/* Sliding panel */}
+      <div style={{
+        position: 'fixed', top: 0, bottom: 0,
+        left: journalOpen ? 0 : -320,
+        width: 320, zIndex: 25,
+        display: 'flex', flexDirection: 'column',
+        background: dark ? 'rgba(10,11,16,0.98)' : 'rgba(219,208,182,0.98)',
+        backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+        borderRight: `1px solid ${t.border}`,
+        transition: 'left 0.26s cubic-bezier(0.16,1,0.3,1)',
+      }}>
           {/* Panel header */}
-          <div style={{ padding: '14px 16px', borderBottom: `1px solid ${t.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Trade Journal</span>
-            <span style={{ fontSize: 11, color: t.muted }}>{journal.length} {journal.length === 1 ? 'entry' : 'entries'}</span>
+          <div style={{ padding: '0 16px', height: 44, borderBottom: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: t.text, letterSpacing: 0.1 }}>Journal</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {journal.length > 0 && <span style={{ fontSize: 11, color: t.muted }}>{journal.length}</span>}
+              <button onClick={() => setJournalOpen(false)} style={{ background: 'none', border: 'none', color: t.muted, cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 2px', display: 'flex', alignItems: 'center' }}
+                onMouseEnter={e => e.currentTarget.style.color = t.text}
+                onMouseLeave={e => e.currentTarget.style.color = t.muted}
+              >‹</button>
+            </div>
           </div>
 
           {/* Form */}
@@ -730,25 +769,6 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Tab handle */}
-        <div
-          onClick={() => setJournalOpen(o => !o)}
-          onMouseEnter={e => e.currentTarget.style.background = t.surfaceHover}
-          onMouseLeave={e => e.currentTarget.style.background = t.surface}
-          style={{
-            width: 32, background: t.surface, borderRight: `1px solid ${t.border}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', flexShrink: 0, transition: 'background 0.15s',
-          }}
-        >
-          <span style={{
-            writingMode: 'vertical-rl', transform: 'rotate(180deg)',
-            fontSize: 10, fontWeight: 600, letterSpacing: 1.5,
-            textTransform: 'uppercase', userSelect: 'none',
-            color: journalOpen ? t.blue : t.muted, transition: 'color 0.15s',
-          }}>Journal</span>
         </div>
       </div>
 
