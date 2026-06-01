@@ -436,11 +436,22 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const [overrideActive, setOverrideActive] = useState(false)
   const [editingIdx, setEditingIdx] = useState(null)
   const [editingLabel, setEditingLabel] = useState('')
+  const [journalOpen, setJournalOpen] = useState(false)
+  const [journal, setJournal] = useState([])
+  const journalRef = useRef([])
+  const [jName, setJName] = useState('')
+  const [jOutcome, setJOutcome] = useState(null)
+  const [jSide, setJSide] = useState(null)
+  const [jReasoning, setJReasoning] = useState('')
+  const [jLossReason, setJLossReason] = useState('')
+  const [jImage, setJImage] = useState(null)
+  const imageInputRef = useRef(null)
   const saveTimer = useRef(null)
 
   useEffect(() => {
     fetch(`/api/data/${user.id}`).then(r => r.json()).then(d => {
       setDays(d.days || []); setBalance(d.balance || '50000')
+      const j = d.journal || []; setJournal(j); journalRef.current = j
       if (d.balance && d.balance !== '50000') setOverrideActive(true)
       setLoaded(true)
     })
@@ -449,14 +460,35 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const save = useCallback((d, b) => {
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      fetch(`/api/data/${user.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: d, balance: b }) })
+      fetch(`/api/data/${user.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: d, balance: b, journal: journalRef.current }) })
     }, 600)
   }, [user.id])
 
   const setDaysSave = fn => setDays(prev => { const next = fn(prev); save(next, balance); return next })
   const setBalanceSave = v => { setBalance(v); setOverrideActive(v !== '' && v !== '50000'); save(days, v) }
-  const resetData = () => { setDays([]); setBalance('50000'); setOverrideActive(false); setConfirmReset(false); fetch(`/api/data/${user.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: [], balance: '50000' }) }) }
+  const resetData = () => { setDays([]); setBalance('50000'); setOverrideActive(false); setConfirmReset(false); fetch(`/api/data/${user.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: [], balance: '50000', journal: journalRef.current }) }) }
   const commitRename = (idx, val) => { setDaysSave(prev => prev.map((tr, i) => i === idx ? { ...tr, label: val.trim() } : tr)); setEditingIdx(null) }
+
+  const clearJournalForm = () => { setJName(''); setJOutcome(null); setJSide(null); setJReasoning(''); setJLossReason(''); setJImage(null) }
+  const saveJournalEntry = () => {
+    if (!jName.trim()) return
+    const entry = { id: Date.now(), date: new Date().toISOString().split('T')[0], name: jName.trim(), outcome: jOutcome, side: jSide, reasoning: jReasoning.trim(), lossReasoning: jOutcome === 'loss' ? jLossReason.trim() : '', image: jImage }
+    const next = [entry, ...journal]
+    setJournal(next); journalRef.current = next
+    fetch(`/api/data/${user.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days, balance, journal: next }) })
+    clearJournalForm()
+  }
+  const deleteJournalEntry = (id) => {
+    const next = journal.filter(e => e.id !== id)
+    setJournal(next); journalRef.current = next
+    fetch(`/api/data/${user.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days, balance, journal: next }) })
+  }
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0]; if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setJImage(ev.target.result)
+    reader.readAsDataURL(file)
+  }
 
   const totalPnl = useMemo(() => days.reduce((s, d) => s + d.pnl, 0), [days])
   const bestTrade = useMemo(() => { const pos = days.filter(d => d.pnl > 0); return pos.length > 0 ? Math.max(...pos.map(d => d.pnl)) : 0 }, [days])
@@ -554,6 +586,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const chartColor = totalPnl >= TARGET ? t.green : totalPnl < 0 ? t.red : t.blue
   const chartColorFrom = totalPnl >= TARGET ? '#2ab87a' : totalPnl < 0 ? '#e04060' : '#9f6bff'
   const inp = { padding: '10px 12px', borderRadius: 10, border: `1px solid ${t.border}`, fontSize: 14, color: t.text, background: t.inputBg, outline: 'none', fontFamily: FONT, boxSizing: 'border-box', transition: 'border-color 0.15s' }
+  const jInp = { ...inp, fontSize: 12, padding: '8px 10px', width: '100%', borderRadius: 8 }
 
   const conColor = failing ? t.red : passing ? t.green : t.blue
 
@@ -565,6 +598,159 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
 
   return (
     <div style={{ background: t.bg, minHeight: '100vh', fontFamily: FONT, color: t.text, padding: '0 0 60px', boxSizing: 'border-box' }}>
+
+      {/* ── Journal Sidebar ── */}
+      <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+      <div style={{
+        position: 'fixed', top: 0, bottom: 0, left: journalOpen ? 0 : -308,
+        width: 340, zIndex: 25, display: 'flex',
+        transition: 'left 0.28s cubic-bezier(0.16,1,0.3,1)',
+      }}>
+        {/* Content panel */}
+        <div style={{
+          width: 308, display: 'flex', flexDirection: 'column',
+          background: dark ? 'rgba(10,11,16,0.97)' : 'rgba(216,205,176,0.97)',
+          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+          borderRight: `1px solid ${t.border}`,
+        }}>
+          {/* Panel header */}
+          <div style={{ padding: '14px 16px', borderBottom: `1px solid ${t.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Trade Journal</span>
+            <span style={{ fontSize: 11, color: t.muted }}>{journal.length} {journal.length === 1 ? 'entry' : 'entries'}</span>
+          </div>
+
+          {/* Form */}
+          <div style={{ padding: '14px 16px', borderBottom: `1px solid ${t.border}`, display: 'flex', flexDirection: 'column', gap: 9, flexShrink: 0 }}>
+            <input style={jInp} placeholder="Trade name" value={jName} onChange={e => setJName(e.target.value)} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              {['win', 'loss'].map(o => (
+                <button key={o} onClick={() => setJOutcome(jOutcome === o ? null : o)} style={{
+                  padding: '7px 0', borderRadius: 8, cursor: 'pointer', fontFamily: FONT,
+                  fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
+                  border: `1px solid ${jOutcome === o ? (o === 'win' ? t.greenBorder : t.redBorder) : t.border}`,
+                  background: jOutcome === o ? (o === 'win' ? t.greenDim : t.redDim) : 'transparent',
+                  color: jOutcome === o ? (o === 'win' ? t.green : t.red) : t.muted,
+                }}>{o === 'win' ? 'Win' : 'Loss'}</button>
+              ))}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              {['long', 'short'].map(s => (
+                <button key={s} onClick={() => setJSide(jSide === s ? null : s)} style={{
+                  padding: '7px 0', borderRadius: 8, cursor: 'pointer', fontFamily: FONT,
+                  fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
+                  border: `1px solid ${jSide === s ? t.blue + '44' : t.border}`,
+                  background: jSide === s ? t.blueDim : 'transparent',
+                  color: jSide === s ? t.blue : t.muted,
+                }}>{s.charAt(0).toUpperCase() + s.slice(1)}</button>
+              ))}
+            </div>
+
+            {/* Image upload */}
+            <div
+              onClick={() => imageInputRef.current?.click()}
+              onMouseEnter={e => e.currentTarget.style.borderColor = t.blue + '66'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = t.border}
+              style={{
+                borderRadius: 8, border: `1px dashed ${t.border}`, cursor: 'pointer',
+                overflow: 'hidden', transition: 'border-color 0.15s',
+                minHeight: jImage ? 0 : 58, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {jImage ? (
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <img src={jImage} alt="" style={{ width: '100%', display: 'block', maxHeight: 130, objectFit: 'cover' }} />
+                  <button onClick={e => { e.stopPropagation(); setJImage(null) }} style={{
+                    position: 'absolute', top: 5, right: 5, width: 20, height: 20,
+                    background: 'rgba(0,0,0,0.65)', border: 'none', borderRadius: '50%',
+                    color: '#fff', fontSize: 13, cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1,
+                  }}>×</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 0' }}>
+                  <span style={{ fontSize: 20, color: t.muted, lineHeight: 1 }}>+</span>
+                  <span style={{ fontSize: 10, color: t.muted }}>Add screenshot</span>
+                </div>
+              )}
+            </div>
+
+            <textarea
+              placeholder="Trade reasoning…"
+              value={jReasoning} onChange={e => setJReasoning(e.target.value)}
+              style={{ ...jInp, resize: 'vertical', minHeight: 70, lineHeight: 1.55 }}
+            />
+
+            {jOutcome === 'loss' && (
+              <textarea
+                placeholder="What went wrong?"
+                value={jLossReason} onChange={e => setJLossReason(e.target.value)}
+                style={{ ...jInp, resize: 'vertical', minHeight: 56, lineHeight: 1.55, borderColor: t.redBorder }}
+              />
+            )}
+
+            <div style={{ display: 'flex', gap: 7 }}>
+              <button onClick={saveJournalEntry} style={{
+                flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
+                background: t.accent, color: '#fff', fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', fontFamily: FONT,
+              }}>Save</button>
+              <button onClick={clearJournalForm} style={{
+                padding: '8px 14px', borderRadius: 8, border: `1px solid ${t.border}`,
+                background: 'transparent', color: t.muted, fontSize: 12,
+                cursor: 'pointer', fontFamily: FONT,
+              }}>Clear</button>
+            </div>
+          </div>
+
+          {/* Entries list */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>
+            {journal.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 12, color: t.muted }}>No entries yet</div>
+            ) : journal.map(entry => (
+              <div key={entry.id} style={{ marginBottom: 10, background: t.card, border: `1px solid ${t.border}`, borderRadius: 10, padding: '12px 13px', backdropFilter: 'blur(12px)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 7 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: t.text, flex: 1, marginRight: 8 }}>{entry.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <span style={{ fontSize: 10, color: t.muted }}>{entry.date}</span>
+                    <button onClick={() => deleteJournalEntry(entry.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.muted, fontSize: 14, padding: 0, lineHeight: 1, opacity: 0.4 }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = t.red }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = t.muted }}
+                    >×</button>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 5, marginBottom: (entry.reasoning || entry.image || entry.lossReasoning) ? 8 : 0, flexWrap: 'wrap' }}>
+                  {entry.outcome && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: entry.outcome === 'win' ? t.greenDim : t.redDim, color: entry.outcome === 'win' ? t.green : t.red, border: `1px solid ${entry.outcome === 'win' ? t.greenBorder : t.redBorder}` }}>{entry.outcome.toUpperCase()}</span>}
+                  {entry.side && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: t.blueDim, color: t.blue, border: `1px solid ${t.blue}22` }}>{entry.side.toUpperCase()}</span>}
+                </div>
+                {entry.image && <img src={entry.image} alt="" style={{ width: '100%', borderRadius: 6, marginBottom: 7, maxHeight: 100, objectFit: 'cover', display: 'block' }} />}
+                {entry.reasoning && <p style={{ margin: '0 0 5px', fontSize: 11, color: t.textSec, lineHeight: 1.55 }}>{entry.reasoning}</p>}
+                {entry.lossReasoning && <p style={{ margin: 0, fontSize: 11, color: t.red, opacity: 0.85, lineHeight: 1.5 }}>↳ {entry.lossReasoning}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tab handle */}
+        <div
+          onClick={() => setJournalOpen(o => !o)}
+          onMouseEnter={e => e.currentTarget.style.background = t.surfaceHover}
+          onMouseLeave={e => e.currentTarget.style.background = t.surface}
+          style={{
+            width: 32, background: t.surface, borderRight: `1px solid ${t.border}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', flexShrink: 0, transition: 'background 0.15s',
+          }}
+        >
+          <span style={{
+            writingMode: 'vertical-rl', transform: 'rotate(180deg)',
+            fontSize: 10, fontWeight: 600, letterSpacing: 1.5,
+            textTransform: 'uppercase', userSelect: 'none',
+            color: journalOpen ? t.blue : t.muted, transition: 'color 0.15s',
+          }}>Journal</span>
+        </div>
+      </div>
 
       {/* ── Header ── */}
       <header style={{
