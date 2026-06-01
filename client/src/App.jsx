@@ -119,85 +119,64 @@ const INSTRUMENTS = [
 function ContractCalc({ t, inp }) {
   const [instrument, setInstrument] = useState('NQ')
   const [sl, setSl] = useState('')
-  const [tp, setTp] = useState('')
   const [risk, setRisk] = useState('')
 
   const inst = INSTRUMENTS.find(i => i.id === instrument)
   const slNum = parseFloat(sl)
-  const tpNum = parseFloat(tp)
   const riskNum = parseFloat(risk)
   const valid = slNum > 0 && riskNum > 0 && inst
-  const hasTP = valid && tpNum > 0
 
   const miniContracts = valid ? Math.max(1, Math.round(riskNum / (slNum * inst.mini))) : 0
   const microContracts = valid ? Math.max(1, Math.round(riskNum / (slNum * inst.micro))) : 0
   const miniActualRisk = valid ? miniContracts * slNum * inst.mini : 0
   const microActualRisk = valid ? microContracts * slNum * inst.micro : 0
-  const riskPct = valid ? (riskNum / 50000) * 100 : 0
-  const miniProfit = hasTP ? miniContracts * tpNum * inst.mini : 0
-  const microProfit = hasTP ? microContracts * tpNum * inst.micro : 0
-  const rr = hasTP ? tpNum / slNum : 0
 
   return (
     <div style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: '20px', background: t.bg }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Size Calculator</span>
-        <span style={{ fontSize: 11, color: t.muted }}>{inst.miniLabel} · ${inst.mini.toLocaleString()}/pt</span>
+        <span style={{ fontSize: 11, color: t.muted, fontVariantNumeric: 'tabular-nums' }}>
+          {inst.miniLabel} <span style={{ color: t.border, margin: '0 4px' }}>·</span> ${inst.mini.toLocaleString()}/pt
+        </span>
       </div>
 
-      <div style={{ display: 'flex', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 3, marginBottom: 14, flexWrap: 'wrap' }}>
         {INSTRUMENTS.map(i => (
           <button key={i.id} onClick={() => setInstrument(i.id)} style={{
-            padding: '5px 11px', borderRadius: 6, border: 'none',
-            background: instrument === i.id ? 'rgba(99,107,255,0.12)' : 'transparent',
+            padding: '5px 10px', borderRadius: 6,
+            border: `1px solid ${instrument === i.id ? t.blue + '44' : 'transparent'}`,
+            background: instrument === i.id ? 'rgba(99,107,255,0.1)' : 'transparent',
             color: instrument === i.id ? t.blue : t.muted,
             fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+            transition: 'color 0.15s, background 0.15s',
           }}>{i.label}</button>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
-        <input style={{ ...inp, fontSize: 13, padding: '9px 11px' }} type="number" placeholder="SL pts" value={sl} onChange={e => setSl(e.target.value)} />
-        <input style={{ ...inp, fontSize: 13, padding: '9px 11px' }} type="number" placeholder="TP pts" value={tp} onChange={e => setTp(e.target.value)} />
-        <input style={{ ...inp, fontSize: 13, padding: '9px 11px' }} type="number" placeholder="Risk $" value={risk} onChange={e => setRisk(e.target.value)} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 10, color: t.muted, fontWeight: 600, letterSpacing: 0.4, marginBottom: 5 }}>SL POINTS</div>
+          <input style={{ ...inp, fontSize: 13, padding: '9px 11px', width: '100%' }} type="number" placeholder="0" value={sl} onChange={e => setSl(e.target.value)} />
+        </div>
+        <div>
+          <div style={{ fontSize: 10, color: t.muted, fontWeight: 600, letterSpacing: 0.4, marginBottom: 5 }}>RISK $</div>
+          <input style={{ ...inp, fontSize: 13, padding: '9px 11px', width: '100%' }} type="number" placeholder="0" value={risk} onChange={e => setRisk(e.target.value)} />
+        </div>
       </div>
 
       {valid ? (
-        <>
-          <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontSize: 11 }}>
-            <span style={{ color: t.muted }}>
-              Risk: <span style={{ fontWeight: 700, color: riskPct > 2 ? t.red : riskPct > 1 ? t.amber : t.green }}>
-                {riskPct.toFixed(2)}%
-              </span> of $50k
-            </span>
-            {hasTP && (
-              <span style={{ color: t.muted }}>
-                R:R: <span style={{ fontWeight: 700, color: rr >= 2 ? t.green : rr >= 1 ? t.amber : t.red }}>
-                  {rr.toFixed(1)}R
-                </span>
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: t.border, border: `1px solid ${t.border}`, borderRadius: 8, overflow: 'hidden' }}>
-            <div style={{ background: t.bg, padding: '12px 14px' }}>
-              <div style={{ fontSize: 10, color: t.muted, marginBottom: 6, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Mini · {inst.miniLabel}</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: hasTP ? 5 : 0 }}>
-                <span style={{ fontSize: 22, fontWeight: 800, color: t.blue, letterSpacing: -0.6 }}>{miniContracts}</span>
-                <span style={{ fontSize: 11, color: t.muted }}>= ${miniActualRisk.toFixed(0)} risk</span>
-              </div>
-              {hasTP && <div style={{ fontSize: 11, fontWeight: 600, color: t.green }}>+${miniProfit.toFixed(0)} profit</div>}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {[
+            { label: inst.miniLabel, contracts: miniContracts, actualRisk: miniActualRisk, color: t.blue },
+            { label: inst.microLabel, contracts: microContracts, actualRisk: microActualRisk, color: t.green },
+          ].map(({ label, contracts, actualRisk, color }) => (
+            <div key={label} style={{ background: t.inputBg, border: `1px solid ${t.border}`, borderRadius: 8, padding: '14px 16px' }}>
+              <div style={{ fontSize: 10, color: t.muted, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color, letterSpacing: -0.8, lineHeight: 1, marginBottom: 4 }}>{contracts}</div>
+              <div style={{ fontSize: 11, color: t.muted }}>${actualRisk.toFixed(0)} risk</div>
             </div>
-            <div style={{ background: t.bg, padding: '12px 14px' }}>
-              <div style={{ fontSize: 10, color: t.muted, marginBottom: 6, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Micro · {inst.microLabel}</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: hasTP ? 5 : 0 }}>
-                <span style={{ fontSize: 22, fontWeight: 800, color: t.green, letterSpacing: -0.6 }}>{microContracts}</span>
-                <span style={{ fontSize: 11, color: t.muted }}>= ${microActualRisk.toFixed(0)} risk</span>
-              </div>
-              {hasTP && <div style={{ fontSize: 11, fontWeight: 600, color: t.green }}>+${microProfit.toFixed(0)} profit</div>}
-            </div>
-          </div>
-        </>
+          ))}
+        </div>
       ) : (
         <div style={{ textAlign: 'center', padding: '20px 0', fontSize: 12, color: t.muted }}>Enter SL and risk to calculate</div>
       )}
