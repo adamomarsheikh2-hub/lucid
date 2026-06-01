@@ -119,17 +119,24 @@ const INSTRUMENTS = [
 function ContractCalc({ t, inp }) {
   const [instrument, setInstrument] = useState('NQ')
   const [sl, setSl] = useState('')
+  const [tp, setTp] = useState('')
   const [risk, setRisk] = useState('')
 
   const inst = INSTRUMENTS.find(i => i.id === instrument)
   const slNum = parseFloat(sl)
+  const tpNum = parseFloat(tp)
   const riskNum = parseFloat(risk)
   const valid = slNum > 0 && riskNum > 0 && inst
+  const hasTP = valid && tpNum > 0
 
   const miniContracts = valid ? Math.max(1, Math.round(riskNum / (slNum * inst.mini))) : 0
   const microContracts = valid ? Math.max(1, Math.round(riskNum / (slNum * inst.micro))) : 0
   const miniActualRisk = valid ? miniContracts * slNum * inst.mini : 0
   const microActualRisk = valid ? microContracts * slNum * inst.micro : 0
+  const riskPct = valid ? (riskNum / 50000) * 100 : 0
+  const miniProfit = hasTP ? miniContracts * tpNum * inst.mini : 0
+  const microProfit = hasTP ? microContracts * tpNum * inst.micro : 0
+  const rr = hasTP ? tpNum / slNum : 0
 
   return (
     <div style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: '20px', background: t.bg }}>
@@ -149,27 +156,45 @@ function ContractCalc({ t, inp }) {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-        <input style={{ ...inp, fontSize: 13, padding: '9px 11px' }} type="number" placeholder="SL points" value={sl} onChange={e => setSl(e.target.value)} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+        <input style={{ ...inp, fontSize: 13, padding: '9px 11px' }} type="number" placeholder="SL pts" value={sl} onChange={e => setSl(e.target.value)} />
+        <input style={{ ...inp, fontSize: 13, padding: '9px 11px' }} type="number" placeholder="TP pts" value={tp} onChange={e => setTp(e.target.value)} />
         <input style={{ ...inp, fontSize: 13, padding: '9px 11px' }} type="number" placeholder="Risk $" value={risk} onChange={e => setRisk(e.target.value)} />
       </div>
 
       {valid ? (
         <>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontSize: 11 }}>
+            <span style={{ color: t.muted }}>
+              Risk: <span style={{ fontWeight: 700, color: riskPct > 2 ? t.red : riskPct > 1 ? t.amber : t.green }}>
+                {riskPct.toFixed(2)}%
+              </span> of $50k
+            </span>
+            {hasTP && (
+              <span style={{ color: t.muted }}>
+                R:R: <span style={{ fontWeight: 700, color: rr >= 2 ? t.green : rr >= 1 ? t.amber : t.red }}>
+                  {rr.toFixed(1)}R
+                </span>
+              </span>
+            )}
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: t.border, border: `1px solid ${t.border}`, borderRadius: 8, overflow: 'hidden' }}>
             <div style={{ background: t.bg, padding: '12px 14px' }}>
-              <div style={{ fontSize: 10, color: t.muted, marginBottom: 4, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Mini · {inst.miniLabel}</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <div style={{ fontSize: 10, color: t.muted, marginBottom: 6, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Mini · {inst.miniLabel}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: hasTP ? 5 : 0 }}>
                 <span style={{ fontSize: 22, fontWeight: 800, color: t.blue, letterSpacing: -0.6 }}>{miniContracts}</span>
                 <span style={{ fontSize: 11, color: t.muted }}>= ${miniActualRisk.toFixed(0)} risk</span>
               </div>
+              {hasTP && <div style={{ fontSize: 11, fontWeight: 600, color: t.green }}>+${miniProfit.toFixed(0)} profit</div>}
             </div>
             <div style={{ background: t.bg, padding: '12px 14px' }}>
-              <div style={{ fontSize: 10, color: t.muted, marginBottom: 4, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Micro · {inst.microLabel}</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <div style={{ fontSize: 10, color: t.muted, marginBottom: 6, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Micro · {inst.microLabel}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: hasTP ? 5 : 0 }}>
                 <span style={{ fontSize: 22, fontWeight: 800, color: t.green, letterSpacing: -0.6 }}>{microContracts}</span>
                 <span style={{ fontSize: 11, color: t.muted }}>= ${microActualRisk.toFixed(0)} risk</span>
               </div>
+              {hasTP && <div style={{ fontSize: 11, fontWeight: 600, color: t.green }}>+${microProfit.toFixed(0)} profit</div>}
             </div>
           </div>
         </>
@@ -430,6 +455,8 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const [loaded, setLoaded] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [overrideActive, setOverrideActive] = useState(false)
+  const [editingIdx, setEditingIdx] = useState(null)
+  const [editingLabel, setEditingLabel] = useState('')
   const saveTimer = useRef(null)
 
   useEffect(() => {
@@ -450,6 +477,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const setDaysSave = fn => setDays(prev => { const next = fn(prev); save(next, balance); return next })
   const setBalanceSave = v => { setBalance(v); setOverrideActive(v !== '' && v !== '50000'); save(days, v) }
   const resetData = () => { setDays([]); setBalance('50000'); setOverrideActive(false); setConfirmReset(false); fetch(`/api/data/${user.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: [], balance: '50000' }) }) }
+  const commitRename = (idx, val) => { setDaysSave(prev => prev.map((tr, i) => i === idx ? { ...tr, label: val.trim() } : tr)); setEditingIdx(null) }
 
   const totalPnl = useMemo(() => days.reduce((s, d) => s + d.pnl, 0), [days])
   const bestTrade = useMemo(() => { const pos = days.filter(d => d.pnl > 0); return pos.length > 0 ? Math.max(...pos.map(d => d.pnl)) : 0 }, [days])
@@ -866,7 +894,25 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
                       </div>
                       {group.trades.map(td => (
                         <div key={td._idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', borderRadius: 4 }}>
-                          <span style={{ fontSize: 12, color: t.textSec }}>{td.label || 'Trade'}</span>
+                          {editingIdx === td._idx ? (
+                            <input
+                              autoFocus
+                              value={editingLabel}
+                              onChange={e => setEditingLabel(e.target.value)}
+                              onBlur={() => commitRename(td._idx, editingLabel)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') commitRename(td._idx, editingLabel)
+                                if (e.key === 'Escape') setEditingIdx(null)
+                              }}
+                              style={{ ...inp, fontSize: 11, padding: '3px 7px', flex: 1, marginRight: 8 }}
+                            />
+                          ) : (
+                            <span
+                              onClick={() => { setEditingIdx(td._idx); setEditingLabel(td.label || '') }}
+                              style={{ fontSize: 12, color: t.textSec, cursor: 'text', flex: 1 }}
+                              title="Click to rename"
+                            >{td.label || 'Trade'}</span>
+                          )}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ fontSize: 12, fontWeight: 600, color: td.pnl >= 0 ? t.green : t.red, fontVariantNumeric: 'tabular-nums' }}>{td.pnl >= 0 ? '+' : ''}{fmt(td.pnl)}</span>
                             <button onClick={() => setDaysSave(p => p.filter((_,j) => j !== td._idx))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.muted, fontSize: 13, padding: 0, lineHeight: 1, opacity: 0.4 }}
