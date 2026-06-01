@@ -769,7 +769,6 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
               </div>
             ))}
           </div>
-        </div>
       </div>
 
       {/* ── Header ── */}
