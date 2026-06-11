@@ -878,7 +878,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
       </header>
 
       {/* ── Main content column ── */}
-      <div style={{ position:'relative', zIndex:1, maxWidth:1100, margin:'0 auto', padding:'28px 32px 90px', zoom:0.9 }}>
+      <div style={{ position:'relative', zIndex:1, maxWidth:1100, margin:'0 auto', padding:'28px 50px 90px', zoom:0.9 }}>
 
         {/* ── 1. Balance Hero ── */}
         <div style={{ padding:'2px 2px 30px' }}>
