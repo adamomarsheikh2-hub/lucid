@@ -451,9 +451,9 @@ function NewsCard({ t, dark }) {
     try {
       const data = await fetch('/api/calendar').then(r => r.json())
       if (!Array.isArray(data)) throw new Error('bad response')
-      // Show events from 1 hour ago onwards so recently-released events still appear
-      const cutoff = Date.now() - 60 * 60 * 1000
-      setEvents(data.filter(e => new Date(e.date).getTime() >= cutoff))
+      // Show from start of today — past events show faded with actuals
+      const startOfToday = new Date(); startOfToday.setHours(0,0,0,0)
+      setEvents(data.filter(e => new Date(e.date).getTime() >= startOfToday.getTime()))
       setLastUpdate(new Date())
       setStatus('ok')
     } catch {
@@ -526,7 +526,7 @@ function NewsCard({ t, dark }) {
                         <span style={{ fontSize:8.5, fontWeight:800, letterSpacing:'0.1em', color:impactClr, background:`${impactClr}18`, border:`1px solid ${impactClr}40`, borderRadius:4, padding:'1px 5px' }}>{isHigh ? 'HIGH' : 'MED'}</span>
                       </div>
                       {/* Event name */}
-                      <div style={{ fontSize:11.5, fontWeight:600, color: hasActual ? t.textStrong : t.text, lineHeight:1.35, marginBottom: (e.forecast || e.previous || hasActual) ? 5 : 0, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{e.event}</div>
+                      <div style={{ fontSize:11.5, fontWeight:600, color: hasActual ? t.textStrong : t.text, lineHeight:1.35, marginBottom: (e.forecast || e.previous || hasActual) ? 5 : 0, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{e.title}</div>
                       {/* Forecast / Actual row */}
                       {(e.forecast || e.previous || hasActual) && (
                         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
