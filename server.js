@@ -72,13 +72,23 @@ app.post('/api/data/:userId', (req, res) => {
 // Economic calendar — proxy ForexFactory JSON feed, cache 5 min
 let calCache = { data: null, ts: 0 }
 
+const safeJson = async url => {
+  try {
+    const r = await fetch(url)
+    if (!r.ok) return []
+    const data = await r.json()
+    return Array.isArray(data) ? data : []
+  } catch { return [] }
+}
+
 app.get('/api/calendar', async (_req, res) => {
   const now = Date.now()
   if (calCache.data && now - calCache.ts < 5 * 60 * 1000) return res.json(calCache.data)
   try {
+    const TZ = 'timezone=America%2FNew_York'
     const [tw, nw] = await Promise.all([
-      fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json?timezone=America%2FNew_York').then(r => r.json()),
-      fetch('https://nfs.faireconomy.media/ff_calendar_nextweek.json?timezone=America%2FNew_York').then(r => r.json()),
+      safeJson(`https://nfs.faireconomy.media/ff_calendar_thisweek.json?${TZ}`),
+      safeJson(`https://nfs.faireconomy.media/ff_calendar_nextweek.json?${TZ}`),
     ])
     const filtered = [...tw, ...nw]
       .filter(e => e.country === 'USD' && (e.impact === 'High' || e.impact === 'Medium'))
@@ -87,7 +97,7 @@ app.get('/api/calendar', async (_req, res) => {
     res.json(filtered)
   } catch (err) {
     console.error('Calendar error:', err.message)
-    if (calCache.data) return res.json(calCache.data) // serve stale on error
+    if (calCache.data) return res.json(calCache.data)
     res.status(502).json({ error: 'Calendar unavailable' })
   }
 })
