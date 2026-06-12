@@ -146,7 +146,7 @@ function EquityChart({ days, target, t }) {
   const n = cum.length
 
   if (n === 0) return (
-    <div ref={containerRef} style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, color:t.muted }}>
+    <div ref={containerRef} style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, color:t.muted }}>
       Add trades to see the curve
     </div>
   )
@@ -240,7 +240,7 @@ function EquityChart({ days, target, t }) {
   }
 
   return (
-    <div ref={containerRef} style={{ position:'relative', flex:1, minHeight:0 }} onMouseMove={onMove} onMouseLeave={onLeave}>
+    <div ref={containerRef} style={{ position:'relative', width:'100%', height:'100%' }} onMouseMove={onMove} onMouseLeave={onLeave}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ width:'100%', height:'100%', display:'block', overflow:'visible' }}>
         <defs>
           <linearGradient id="lfArea" x1="0" y1="0" x2="0" y2="1">
@@ -1170,7 +1170,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
                 </span>
               </div>
             </div>
-            <div style={{ position:'relative', zIndex:1, flex:1, minHeight:0, padding:'0 12px 16px' }}>
+            <div style={{ position:'relative', zIndex:1, height:320, padding:'0 12px 16px', boxSizing:'border-box' }}>
               <EquityChart days={days} target={TARGET} t={t}/>
             </div>
           </div>
