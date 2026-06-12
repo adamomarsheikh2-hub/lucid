@@ -1,8 +1,4 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
-import {
-  AreaChart, Area, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, ReferenceLine, CartesianGrid,
-} from 'recharts'
 
 // ─── Constants & Helpers ──────────────────────────────────────────────────────
 
@@ -122,19 +118,188 @@ function StatusPill({ text, color }) {
   )
 }
 
-function ChartTip({ active, payload, label, t }) {
-  if (!active || !payload?.length) return null
-  const v = payload[0]?.value ?? 0
-  return (
-    <div style={{
-      background:'rgba(8,8,11,0.92)', border:'1px solid rgba(255,255,255,0.12)',
-      borderRadius:12, padding:'10px 14px', backdropFilter:'blur(20px)',
-      boxShadow:'0 8px 32px rgba(0,0,0,0.5)',
-    }}>
-      <div style={{ fontSize:11, color:t.muted, marginBottom:3 }}>{label}</div>
-      <div style={{ fontSize:16, fontWeight:700, color:v>=0?t.green:t.red, fontVariantNumeric:'tabular-nums' }}>
-        {sfmt(v)}
+// ─── Custom SVG Equity Chart ──────────────────────────────────────────────────
+
+function niceStep(raw) {
+  const pow = Math.pow(10, Math.floor(Math.log10(Math.abs(raw) || 1)))
+  const n = raw / pow
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * pow
+}
+const compact = v => { const a = Math.abs(v); return (v < 0 ? '-' : '') + (a >= 1000 ? '$' + (a/1000).toFixed(1) + 'k' : '$' + Math.round(a)) }
+const fmtMD   = iso => { const p = iso.split('-'); return (+p[1]) + '/' + (+p[2]) }
+const fmtFull = iso => new Date(iso + 'T12:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })
+
+function EquityChart({ days, target, t }) {
+  const containerRef = useRef(null)
+  const [dims, setDims] = useState({ w:900, h:340 })
+  const [hoverIdx, setHoverIdx] = useState(null)
+
+  useEffect(() => {
+    const el = containerRef.current; if (!el) return
+    const measure = () => { const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) setDims({ w:Math.round(r.width), h:Math.round(r.height) }) }
+    const ro = new ResizeObserver(measure); ro.observe(el); measure()
+    return () => ro.disconnect()
+  }, [])
+
+  const sorted = useMemo(() => [...days].sort((a,b) => (a.date||'').localeCompare(b.date||'')), [days])
+  const cum = useMemo(() => { let s=0; return sorted.map(d => { s+=d.pnl; return s }) }, [sorted])
+  const n = cum.length
+
+  if (n === 0) return (
+    <div ref={containerRef} style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, color:t.muted }}>
+      Add trades to see the curve
+    </div>
+  )
+
+  const { w:W, h:H } = dims
+  const padL=14, padR=52, padT=26, padB=26
+  const rgb = t.accentGlow
+
+  // Running peak for drawdown band
+  const peak=[]; let mx=-Infinity
+  cum.forEach(v => { mx=Math.max(mx,v); peak.push(mx) })
+
+  // Y range hugs equity; target only expands range when near
+  let vMin=Math.min(0,...cum), vMaxData=Math.max(...cum)
+  if (vMin===vMaxData) { vMin-=500; vMaxData+=500 }
+  const dataRange = vMaxData-vMin || 1
+  const includeTgt = target <= vMaxData + dataRange*0.04
+  const vMax = includeTgt ? Math.max(vMaxData, target) : vMaxData
+  const range = vMax-vMin
+  const lo = vMin - range*0.05, hi = vMax + range*(includeTgt ? 0.07 : 0.16)
+
+  const X = i => n<=1 ? padL+(W-padL-padR)/2 : padL+(i/(n-1))*(W-padL-padR)
+  const Y = v => padT+(1-(v-lo)/(hi-lo))*(H-padT-padB)
+  const pts = cum.map((v,i) => ({ x:X(i), y:Y(v) }))
+  const peakPts = peak.map((v,i) => ({ x:X(i), y:Y(v) }))
+  const chartBottom = H-padB
+
+  const lineP = 'M '+pts.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' L ')
+  const areaP = lineP+' L '+pts[pts.length-1].x.toFixed(1)+' '+chartBottom+' L '+pts[0].x.toFixed(1)+' '+chartBottom+' Z'
+  const ddP   = lineP+' L '+peakPts.slice().reverse().map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' L ')+' Z'
+
+  const tgtY       = Y(target)
+  const tgtVisible = tgtY>padT+4 && tgtY<chartBottom-2
+  const tgtAbove   = target>hi
+  const zeroInRange = lo<0 && hi>0
+
+  // Gridlines
+  const step = niceStep(range/3.2)
+  const ticks = []
+  for (let v=Math.ceil(lo/step)*step; v<=hi; v+=step) {
+    if (Y(v)>padT+10 && Y(v)<chartBottom-2) ticks.push(v)
+  }
+
+  // Date axis labels
+  const lblStep = Math.max(1, Math.round((n-1)/4))
+  const dateLabels = []
+  for (let i=0; i<n; i++) {
+    const isFirst=i===0, isLast=i===n-1
+    const keep = isFirst || isLast || (i%lblStep===0 && i>=lblStep && (n-1-i)>=lblStep)
+    if (!keep || !sorted[i]) continue
+    dateLabels.push(
+      <text key={'dl'+i} x={X(i)} y={H-8} fill="#565b64" fontSize={13} textAnchor={isFirst?'start':isLast?'end':'middle'} fontFamily="inherit">
+        {fmtMD(sorted[i].date)}
+      </text>
+    )
+  }
+
+  // Hover
+  const hValid = hoverIdx!=null && hoverIdx>=0 && hoverIdx<n
+  const last = pts[pts.length-1]
+
+  const onMove = ev => {
+    const rect = ev.currentTarget.getBoundingClientRect(); if (!rect.width) return
+    const ux = (ev.clientX-rect.left)*(W/rect.width)
+    let idx = Math.round((ux-padL)/((W-padL-padR)||1)*(n-1))
+    idx = Math.max(0, Math.min(n-1, idx))
+    if (idx!==hoverIdx) setHoverIdx(idx)
+  }
+  const onLeave = () => { if (hoverIdx!=null) setHoverIdx(null) }
+
+  // Tooltip
+  let tooltip = null
+  if (hValid) {
+    const p=pts[hoverIdx], tr=sorted[hoverIdx], bal=50000+cum[hoverIdx]
+    const above=p.y>112
+    const tx = p.x<92?'0%' : p.x>W-92?'-100%' : '-50%'
+    const ty = above ? 'calc(-100% - 16px)' : '16px'
+    tooltip = (
+      <div style={{ position:'absolute', left:p.x+'px', top:p.y+'px', transform:`translate(${tx},${ty})`, pointerEvents:'none', zIndex:5, minWidth:140, padding:'9px 11px', borderRadius:12, background:'rgba(10,10,14,0.86)', backdropFilter:'blur(14px)', WebkitBackdropFilter:'blur(14px)', border:'1px solid rgba(255,255,255,0.12)', boxShadow:'0 16px 40px -14px rgba(0,0,0,0.9)' }}>
+        <div style={{ fontSize:11, color:'#787e88', marginBottom:5 }}>{tr ? fmtFull(tr.date) : ''}</div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:14 }}>
+          <span style={{ fontSize:13, color:'#cdd1d7' }}>{tr?.label||tr?.name||'Trade'}</span>
+          <span style={{ fontSize:13, fontWeight:700, color:tr?.pnl>=0?t.green:t.red, fontVariantNumeric:'tabular-nums' }}>{tr ? sfmt(tr.pnl) : ''}</span>
+        </div>
+        <div style={{ marginTop:6, paddingTop:6, borderTop:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:14 }}>
+          <span style={{ fontSize:11, color:'#787e88' }}>Balance</span>
+          <span style={{ fontSize:13, fontWeight:700, color:'#fff', fontVariantNumeric:'tabular-nums' }}>{fmt(bal)}</span>
+        </div>
       </div>
+    )
+  }
+
+  return (
+    <div ref={containerRef} style={{ position:'relative', flex:1, minHeight:0 }} onMouseMove={onMove} onMouseLeave={onLeave}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ width:'100%', height:'100%', display:'block', overflow:'visible' }}>
+        <defs>
+          <linearGradient id="lfArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={`rgba(${rgb},0.40)`}/>
+            <stop offset="55%"  stopColor={`rgba(${rgb},0.10)`}/>
+            <stop offset="100%" stopColor={`rgba(${rgb},0)`}/>
+          </linearGradient>
+          <linearGradient id="lfLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"   stopColor={t.accent}/>
+            <stop offset="100%" stopColor={t.accent2}/>
+          </linearGradient>
+          <filter id="lfGlow" x="-20%" y="-60%" width="140%" height="260%">
+            <feGaussianBlur stdDeviation="4" result="b"/>
+            <feComponentTransfer in="b" result="bo"><feFuncA type="linear" slope="0.55"/></feComponentTransfer>
+            <feMerge><feMergeNode in="bo"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        {ticks.map((v,i) => (
+          <g key={'g'+i}>
+            <line x1={padL} y1={Y(v)} x2={W-padR} y2={Y(v)} stroke="rgba(255,255,255,0.04)" strokeWidth={1}/>
+            <text x={W-padR+8} y={Y(v)+4} fill="#565b64" fontSize={14} fontFamily="inherit">{compact(v)}</text>
+          </g>
+        ))}
+
+        {zeroInRange && <line x1={padL} y1={Y(0)} x2={W-padR} y2={Y(0)} stroke="rgba(255,255,255,0.14)" strokeWidth={1} strokeDasharray="1 4"/>}
+
+        <path d={areaP} fill="url(#lfArea)"/>
+        <path d={ddP}   fill="rgba(255,92,110,0.09)"/>
+
+        {tgtVisible && <line x1={padL} y1={tgtY} x2={W-padR} y2={tgtY} stroke="#34dda0" strokeWidth={1.6} strokeDasharray="2 6" strokeLinecap="round" opacity={0.8}/>}
+        {tgtVisible && <text x={padL+1} y={tgtY-7} fill="#34dda0" fontSize={12.5} fontWeight={700} letterSpacing="0.05em" fontFamily="inherit">TARGET {compact(target)}</text>}
+        {tgtAbove && <g>
+          <line x1={padL} y1={padT-2} x2={W-padR} y2={padT-2} stroke="rgba(52,221,160,0.5)" strokeWidth={1.4} strokeDasharray="2 6" strokeLinecap="round"/>
+          <text x={W-padR} y={padT-9} fill="#34dda0" fontSize={12.5} fontWeight={700} letterSpacing="0.04em" textAnchor="end" fontFamily="inherit">↑ TARGET {compact(target)}  ·  {compact(Math.max(0,target-cum[cum.length-1]))} to go</text>
+        </g>}
+
+        {hValid && <line x1={pts[hoverIdx].x} y1={padT} x2={pts[hoverIdx].x} y2={chartBottom} stroke="rgba(255,255,255,0.16)" strokeWidth={1}/>}
+
+        <path d={lineP} fill="none" stroke="url(#lfLine)" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" filter="url(#lfGlow)"/>
+
+        {pts.map((p,i) => {
+          const win = sorted[i]?.pnl >= 0
+          return <circle key={'nd'+i} cx={p.x} cy={p.y} r={3.4} fill="#0b0b0f" stroke={win?t.green:t.red} strokeWidth={2}/>
+        })}
+
+        {!hValid && <g>
+          <circle cx={last.x} cy={last.y} r={9}   fill={`rgba(${rgb},0.22)`}/>
+          <circle cx={last.x} cy={last.y} r={4.5} fill="#fff" stroke={t.accent} strokeWidth={2.5}/>
+        </g>}
+
+        {hValid && <g>
+          <circle cx={pts[hoverIdx].x} cy={pts[hoverIdx].y} r={11}  fill={`rgba(${rgb},0.20)`}/>
+          <circle cx={pts[hoverIdx].x} cy={pts[hoverIdx].y} r={5.5} fill={sorted[hoverIdx]?.pnl>=0?t.green:t.red} stroke="#0b0b0f" strokeWidth={2}/>
+        </g>}
+
+        {dateLabels}
+      </svg>
+      {tooltip}
     </div>
   )
 }
@@ -605,11 +770,6 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
 
   const mllPct = MLL_AMOUNT > 0 ? Math.min(100, Math.max(0, (mllBuffer / MLL_AMOUNT) * 100)) : 100
 
-  const chartData = useMemo(() => {
-    let cum = 0
-    return days.map((d, i) => { cum += d.pnl; return { name:d.label || `#${i+1}`, cumulative:parseFloat(cum.toFixed(2)) } })
-  }, [days])
-
   const addTrade = () => {
     const v = parseFloat(pnlInput); if (isNaN(v)) return
     const tradeDate = dateInput || new Date().toISOString().split('T')[0]
@@ -646,9 +806,6 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const conColor  = failing ? t.red : passing ? t.green : t.accent
   const mllColor  = mllPct < 25 ? t.red : mllPct < 50 ? t.amber : t.green
   const mllGrad   = mllPct < 25 ? t.redGrad : mllPct < 50 ? `linear-gradient(90deg,${t.amber},${t.amber})` : t.greenGrad
-  const chartAccent = totalPnl >= TARGET ? t.green : totalPnl < 0 ? t.red : t.accent
-  const chartFrom   = totalPnl >= TARGET ? t.green2 : totalPnl < 0 ? t.red2 : t.accent2
-
   // ── Input style ──
   const inp = {
     padding:'11px 13px', borderRadius:12, border:`1px solid ${t.hairline}`,
@@ -987,79 +1144,34 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
         <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1.62fr) minmax(220px,1fr)', gap:22, marginBottom:22 }}>
 
           {/* Equity Curve */}
-          <div style={{ ...glass(t, dark), display:'flex', flexDirection:'column' }}>
+          <div style={{ ...glass(t, dark), display:'flex', flexDirection:'column', minHeight:360 }}>
             <Sheen/>
-            <div style={{ position:'relative', zIndex:1, padding:'24px 26px 0', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div style={{ position:'relative', zIndex:1, padding:'24px 26px 16px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexShrink:0 }}>
               <div>
                 <div style={{ fontSize:17, fontWeight:650, color:t.text, marginBottom:4 }}>Equity Curve</div>
                 <div style={{ fontSize:13, color:t.muted }}>
                   Last: <span style={{ color:totalPnl>=0?t.green:t.red, fontWeight:600 }}>{sfmt(totalPnl)}</span>
                   <span style={{ margin:'0 8px', color:t.hairline }}>·</span>
-                  Peak: <span style={{ color:t.text, fontWeight:600 }}>{fmt(Math.max(0, ...chartData.map(d => d.cumulative), 0))}</span>
+                  Peak: <span style={{ color:t.text, fontWeight:600 }}>{fmt(Math.max(0,...days.reduce((acc,d,i)=>{let s=(acc[i-1]||0)+d.pnl;acc.push(s);return acc},[]),0))}</span>
                 </div>
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:14, fontSize:11, color:t.muted }}>
-                <span style={{ display:'flex', alignItems:'center', gap:6 }}>
-                  <span style={{ width:16, height:3, background:t.accent, borderRadius:2, display:'inline-block' }}/>
-                  Equity
+                <span style={{ display:'flex', alignItems:'center', gap:5 }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke={t.green} strokeWidth="2"/></svg>
+                  Win
                 </span>
-                <span style={{ display:'flex', alignItems:'center', gap:6 }}>
-                  <span style={{ width:16, borderTop:`1.5px dashed ${t.green}`, display:'inline-block' }}/>
-                  Target
+                <span style={{ display:'flex', alignItems:'center', gap:5 }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke={t.red} strokeWidth="2"/></svg>
+                  Loss
+                </span>
+                <span style={{ display:'flex', alignItems:'center', gap:5 }}>
+                  <span style={{ width:14, height:8, background:'rgba(255,92,110,0.35)', borderRadius:2, display:'inline-block' }}/>
+                  Drawdown
                 </span>
               </div>
             </div>
-            <div style={{ position:'relative', zIndex:1, flex:1, minHeight:280, padding:'0 8px 16px' }}>
-              {chartData.length < 2 ? (
-                <div style={{ height:280, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, color:t.muted }}>
-                  Add 2+ trades to see the curve
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={280}>
-                  <AreaChart data={chartData} margin={{ top:18, right:24, left:8, bottom:4 }}>
-                    <defs>
-                      <linearGradient id="cgFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%"   stopColor={chartAccent} stopOpacity={0.45}/>
-                        <stop offset="40%"  stopColor={chartAccent} stopOpacity={0.15}/>
-                        <stop offset="100%" stopColor={chartAccent} stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="cgStroke" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%"   stopColor={chartFrom}   stopOpacity={0.8}/>
-                        <stop offset="100%" stopColor={chartAccent}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="2 6" stroke={t.hairline} vertical={false} strokeOpacity={0.7}/>
-                    <XAxis dataKey="name" tick={{ fontSize:10, fill:t.muted, fontFamily:FONT }} axisLine={false} tickLine={false} dy={6}/>
-                    <YAxis
-                      tick={{ fontSize:10, fill:t.muted, fontFamily:FONT }}
-                      axisLine={false} tickLine={false} width={46} dx={-4}
-                      tickFormatter={v => { const a=Math.abs(v), s=v<0?'-':''; return a>=1000?`${s}$${(a/1000).toFixed(1)}k`:`${s}$${a}` }}
-                      domain={[dataMin => Math.min(0, Math.floor(dataMin*1.15)), dataMax => Math.ceil(Math.max(dataMax,TARGET)*1.10)]}
-                    />
-                    <Tooltip content={<ChartTip t={t}/>} cursor={{ stroke:t.muted, strokeWidth:1, strokeDasharray:'3 3', strokeOpacity:0.4 }}/>
-                    {/* Glow halo */}
-                    <Area type="monotone" dataKey="cumulative" stroke={chartAccent} strokeWidth={7} fill="none" dot={false} activeDot={false} strokeOpacity={0.14}/>
-                    {/* Main line */}
-                    <Area
-                      type="monotone" dataKey="cumulative"
-                      stroke="url(#cgStroke)" strokeWidth={3.4} fill="url(#cgFill)"
-                      dot={(props) => {
-                        const { cx, cy, index } = props
-                        if (index !== chartData.length-1) return null
-                        return (
-                          <g key="endDot">
-                            <circle cx={cx} cy={cy} r={11} fill={chartAccent} opacity={0.18}/>
-                            <circle cx={cx} cy={cy} r={5.5} fill={chartAccent} stroke="#0a0a0d" strokeWidth={2}/>
-                          </g>
-                        )
-                      }}
-                      activeDot={{ r:7, fill:chartAccent, stroke:'#0a0a0d', strokeWidth:2.5 }}
-                    />
-                    <ReferenceLine y={TARGET} stroke={t.green} strokeDasharray="6 4" strokeWidth={1.5} strokeOpacity={0.85} label={{ value:'$3k', position:'right', fill:t.green, fontSize:10, fontWeight:600, offset:6 }}/>
-                    <ReferenceLine y={0} stroke={t.hairline} strokeWidth={1}/>
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
+            <div style={{ position:'relative', zIndex:1, flex:1, minHeight:0, padding:'0 12px 16px' }}>
+              <EquityChart days={days} target={TARGET} t={t}/>
             </div>
           </div>
 
