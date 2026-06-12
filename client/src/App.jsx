@@ -684,9 +684,7 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const [activeAccountId, setActiveAccountId] = useState(null)
   const [loaded, setLoaded] = useState(false)
   const [showNewAccount, setShowNewAccount] = useState(false)
-  const [showAccountMenu, setShowAccountMenu] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
-  const accountMenuRef = useRef(null)
 
   // ── Form / UI state ──
   const [pnlInput, setPnlInput] = useState('')
@@ -709,13 +707,6 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
   const imageInputRef = useRef(null)
   const saveTimer = useRef(null)
 
-  // ── Click-outside for account menu ──
-  useEffect(() => {
-    if (!showAccountMenu) return
-    const handler = e => { if (accountMenuRef.current && !accountMenuRef.current.contains(e.target)) setShowAccountMenu(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [showAccountMenu])
 
   // ── Load & migrate data ──
   useEffect(() => {
@@ -910,6 +901,64 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
       {dark && <AmbientBg/>}
       {showNewAccount && <NewAccountModal t={t} dark={dark} onClose={() => setShowNewAccount(false)} onCreate={createAccount}/>}
 
+      {/* ── Eval Accounts card (fixed left) ── */}
+      <div style={{ position:'fixed', left:16, top:74, zIndex:15, width:192 }}>
+        <div style={{ ...glass(t, dark, 14) }}>
+          <Sheen/>
+          <div style={{ position:'relative', zIndex:1, paddingTop:14, paddingBottom:8 }}>
+            <div style={{ padding:'0 14px 10px', fontSize:10, color:t.muted, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase' }}>Eval Accounts</div>
+            {accountList.map(a => {
+              const active = a.id === activeAccountId
+              return (
+                <div key={a.id} style={{ display:'flex', alignItems:'center' }}>
+                  <button onClick={() => switchAccount(a.id)} style={{
+                    flex:1, display:'flex', alignItems:'center', gap:9, padding:'8px 14px',
+                    background: active ? `rgba(${t.accentGlow},0.12)` : 'transparent',
+                    border:'none', cursor:'pointer', fontFamily:FONT, textAlign:'left', minWidth:0,
+                    transition:'background 0.12s',
+                  }}
+                    onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.surface }}
+                    onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
+                    <div style={{ width:6, height:6, borderRadius:'50%', flexShrink:0,
+                      background: active ? t.accent : 'transparent',
+                      border: active ? 'none' : `1.5px solid ${t.faint}`,
+                      boxShadow: active ? `0 0 8px rgba(${t.accentGlow},0.7)` : 'none',
+                    }}/>
+                    <div style={{ minWidth:0, flex:1 }}>
+                      <div style={{ fontSize:12, fontWeight:600, color: active ? t.accent : t.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.name}</div>
+                      <div style={{ fontSize:10, color:t.muted, fontVariantNumeric:'tabular-nums' }}>${(a.size/1000).toFixed(0)}K eval</div>
+                    </div>
+                  </button>
+                  {!active && accountList.length > 1 && (
+                    confirmDelete === a.id ? (
+                      <div style={{ display:'flex', gap:3, paddingRight:8, flexShrink:0 }}>
+                        <button onClick={() => deleteAccount(a.id)} style={{ padding:'3px 7px', borderRadius:5, border:`1px solid ${t.redBorder}`, background:t.redDim, color:t.red, fontSize:10, fontWeight:700, cursor:'pointer', fontFamily:FONT }}>Del</button>
+                        <button onClick={() => setConfirmDelete(null)} style={{ padding:'3px 5px', borderRadius:5, border:`1px solid ${t.hairline}`, background:'transparent', color:t.muted, fontSize:10, cursor:'pointer', fontFamily:FONT }}>✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDelete(a.id)} style={{ flexShrink:0, marginRight:8, width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:5, border:'none', background:'transparent', color:t.faint, fontSize:14, cursor:'pointer', fontFamily:FONT, opacity:0.4, transition:'all 0.15s', lineHeight:1 }}
+                        onMouseEnter={e => { e.currentTarget.style.opacity='1'; e.currentTarget.style.color=t.red }}
+                        onMouseLeave={e => { e.currentTarget.style.opacity='0.4'; e.currentTarget.style.color=t.faint }}>×</button>
+                    )
+                  )}
+                </div>
+              )
+            })}
+            <div style={{ height:1, background:t.hairline, margin:'8px 10px' }}/>
+            <button onClick={() => setShowNewAccount(true)} style={{
+              width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 14px',
+              border:'none', background:'transparent', color:t.muted, fontSize:12, fontWeight:600,
+              cursor:'pointer', fontFamily:FONT, transition:'all 0.12s', textAlign:'left',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = t.surface; e.currentTarget.style.color = t.text }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = t.muted }}>
+              <span style={{ fontSize:16, lineHeight:1, color:t.accent, fontWeight:400 }}>+</span>
+              New Eval Account
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Journal sidebar tab */}
       <input ref={imageInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleImageUpload}/>
       <div onClick={() => setJournalOpen(o => !o)} onMouseEnter={e => e.currentTarget.style.background = t.surfaceHover} onMouseLeave={e => e.currentTarget.style.background = t.surface}
@@ -990,71 +1039,15 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
       <header style={{ borderBottom:`1px solid ${t.hairline}`, background:t.headerBg, backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', position:'sticky', top:0, zIndex:20 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 24px' }}>
 
-          {/* Logo + account selector */}
-          <div ref={accountMenuRef} style={{ position:'relative', display:'flex', alignItems:'center', gap:12 }}>
+          {/* Logo */}
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
             <div style={{ width:38, height:38, borderRadius:12, background:t.accentGrad, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:`0 8px 22px -6px rgba(${t.accentGlow},0.75), inset 0 1px 0 rgba(255,255,255,0.45)` }}>
               <span style={{ color:'#fff', fontSize:16, fontWeight:800 }}>L</span>
             </div>
-            <button onClick={() => setShowAccountMenu(v => !v)} style={{ display:'flex', alignItems:'center', gap:7, background:'none', border:'none', cursor:'pointer', fontFamily:FONT, padding:'4px 6px', borderRadius:8, transition:'background 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.background=t.surface}
-              onMouseLeave={e => e.currentTarget.style.background='none'}>
+            <div>
               <span style={{ fontSize:16, fontWeight:650, color:t.text }}>LucidFlex</span>
-              <span style={{ fontSize:14, color:t.faint, fontWeight:400 }}>· {acc.name || '…'}</span>
-              <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transition:'transform 0.2s', transform: showAccountMenu ? 'rotate(180deg)' : 'none', flexShrink:0 }}>
-                <path d="M1 1L5 5L9 1" stroke={t.muted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-
-            {/* Account dropdown */}
-            {showAccountMenu && (
-              <div style={{ position:'absolute', top:'calc(100% + 10px)', left:0, zIndex:30, minWidth:220,
-                ...glass(t, dark, 14), animation:'fadeUp 0.15s ease both', padding:'6px' }}>
-                {accountList.map(a => {
-                  const active = a.id === activeAccountId
-                  return (
-                    <div key={a.id} style={{ display:'flex', alignItems:'center', gap:6, borderRadius:9, marginBottom:2 }}>
-                      <button onClick={() => { switchAccount(a.id); setShowAccountMenu(false) }} style={{
-                        flex:1, display:'flex', alignItems:'center', justifyContent:'space-between',
-                        padding:'9px 11px', borderRadius:9, border:'none', cursor:'pointer', fontFamily:FONT,
-                        background: active ? `rgba(${t.accentGlow},0.14)` : 'transparent',
-                        transition:'background 0.12s',
-                      }}
-                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.surface }}
-                        onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                          {active && <div style={{ width:5, height:5, borderRadius:'50%', background:t.accent, flexShrink:0 }}/>}
-                          {!active && <div style={{ width:5, height:5, borderRadius:'50%', background:'transparent', flexShrink:0 }}/>}
-                          <span style={{ fontSize:13, fontWeight:600, color: active ? t.accent : t.text }}>{a.name}</span>
-                        </div>
-                        <span style={{ fontSize:11, color:t.muted, fontVariantNumeric:'tabular-nums' }}>${(a.size/1000).toFixed(0)}K</span>
-                      </button>
-                      {!active && accountList.length > 1 && (
-                        confirmDelete === a.id ? (
-                          <div style={{ display:'flex', gap:3, flexShrink:0, paddingRight:4 }}>
-                            <button onClick={() => deleteAccount(a.id)} style={{ padding:'4px 8px', borderRadius:6, border:`1px solid ${t.redBorder}`, background:t.redDim, color:t.red, fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:FONT }}>Del</button>
-                            <button onClick={() => setConfirmDelete(null)} style={{ padding:'4px 6px', borderRadius:6, border:`1px solid ${t.hairline}`, background:'transparent', color:t.muted, fontSize:11, cursor:'pointer', fontFamily:FONT }}>✕</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => setConfirmDelete(a.id)} style={{ flexShrink:0, marginRight:4, width:22, height:22, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:6, border:'none', background:'transparent', color:t.faint, fontSize:14, cursor:'pointer', fontFamily:FONT, opacity:0.5, transition:'opacity 0.15s' }}
-                            onMouseEnter={e => { e.currentTarget.style.opacity='1'; e.currentTarget.style.color=t.red }}
-                            onMouseLeave={e => { e.currentTarget.style.opacity='0.5'; e.currentTarget.style.color=t.faint }}>×</button>
-                        )
-                      )}
-                    </div>
-                  )
-                })}
-                <div style={{ height:1, background:t.hairline, margin:'4px 6px' }}/>
-                <button onClick={() => { setShowAccountMenu(false); setShowNewAccount(true) }} style={{
-                  width:'100%', display:'flex', alignItems:'center', gap:8, padding:'9px 11px',
-                  borderRadius:9, border:'none', cursor:'pointer', fontFamily:FONT, background:'transparent',
-                  color:t.muted, fontSize:13, fontWeight:600, transition:'background 0.12s',
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.background=t.surface; e.currentTarget.style.color=t.text }}
-                  onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color=t.muted }}>
-                  <span style={{ fontSize:16, lineHeight:1, color:t.accent }}>+</span> New Eval Account
-                </button>
-              </div>
-            )}
+              <span style={{ fontSize:14, color:t.faint, fontWeight:400 }}> · {acc.name || '…'}</span>
+            </div>
           </div>
 
           {/* Right controls */}
