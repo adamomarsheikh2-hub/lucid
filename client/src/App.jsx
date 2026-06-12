@@ -1146,55 +1146,55 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
         </div>
       </header>
 
-      {/* ── 3-column body ── */}
-      <div style={{ display:'flex', alignItems:'flex-start', position:'relative', zIndex:1 }}>
-
-        {/* Left: Eval Accounts */}
-        <div style={{ width:204, flexShrink:0, padding:'22px 0 22px 20px', position:'sticky', top:63, maxHeight:'calc(100vh - 63px)', overflowY:'auto', boxSizing:'border-box' }}>
-          <div style={{ ...glass(t, dark, 14) }}>
-            <Sheen/>
-            <div style={{ position:'relative', zIndex:1, paddingTop:14, paddingBottom:8 }}>
-              <div style={{ padding:'0 14px 10px', fontSize:10, color:t.muted, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase' }}>Eval Accounts</div>
-              {accountList.map(a => {
-                const active = a.id === activeAccountId
-                return (
-                  <div key={a.id} style={{ display:'flex', alignItems:'center' }}>
-                    <button onClick={() => switchAccount(a.id)} style={{ flex:1, display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background: active ? `rgba(${t.accentGlow},0.12)` : 'transparent', border:'none', cursor:'pointer', fontFamily:FONT, textAlign:'left', minWidth:0, transition:'background 0.12s' }}
-                      onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.surface }}
-                      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
-                      <div style={{ width:6, height:6, borderRadius:'50%', flexShrink:0, background: active ? t.accent : 'transparent', border: active ? 'none' : `1.5px solid ${t.faint}`, boxShadow: active ? `0 0 8px rgba(${t.accentGlow},0.7)` : 'none' }}/>
-                      <div style={{ minWidth:0, flex:1 }}>
-                        <div style={{ fontSize:12, fontWeight:600, color: active ? t.accent : t.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.name}</div>
-                        <div style={{ fontSize:10, color:t.muted, fontVariantNumeric:'tabular-nums' }}>${(a.size/1000).toFixed(0)}K eval</div>
-                      </div>
-                    </button>
-                    {!active && accountList.length > 1 && (
-                      confirmDelete === a.id ? (
-                        <div style={{ display:'flex', gap:3, paddingRight:8, flexShrink:0 }}>
-                          <button onClick={() => deleteAccount(a.id)} style={{ padding:'3px 7px', borderRadius:5, border:`1px solid ${t.redBorder}`, background:t.redDim, color:t.red, fontSize:10, fontWeight:700, cursor:'pointer', fontFamily:FONT }}>Del</button>
-                          <button onClick={() => setConfirmDelete(null)} style={{ padding:'3px 5px', borderRadius:5, border:`1px solid ${t.hairline}`, background:'transparent', color:t.muted, fontSize:10, cursor:'pointer', fontFamily:FONT }}>✕</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setConfirmDelete(a.id)} style={{ flexShrink:0, marginRight:8, width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:5, border:'none', background:'transparent', color:t.faint, fontSize:14, cursor:'pointer', fontFamily:FONT, opacity:0.4, transition:'all 0.15s', lineHeight:1 }}
-                          onMouseEnter={e => { e.currentTarget.style.opacity='1'; e.currentTarget.style.color=t.red }}
-                          onMouseLeave={e => { e.currentTarget.style.opacity='0.4'; e.currentTarget.style.color=t.faint }}>×</button>
-                      )
-                    )}
+      {/* ── Left sidebar (fixed) ── */}
+      <div style={{ position:'fixed', left:0, top:63, bottom:0, width:210, zIndex:18, overflowY:'auto', borderRight:`1px solid ${t.hairline}`, background:t.headerBg, backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
+        <div style={{ padding:'20px 0 20px' }}>
+          <div style={{ padding:'0 16px 10px', fontSize:10, color:t.muted, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase' }}>Eval Accounts</div>
+          {accountList.map(a => {
+            const active = a.id === activeAccountId
+            return (
+              <div key={a.id} style={{ display:'flex', alignItems:'center' }}>
+                <button onClick={() => switchAccount(a.id)} style={{ flex:1, display:'flex', alignItems:'center', gap:9, padding:'9px 16px', background: active ? `rgba(${t.accentGlow},0.12)` : 'transparent', border:'none', cursor:'pointer', fontFamily:FONT, textAlign:'left', minWidth:0, transition:'background 0.12s' }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.surface }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
+                  <div style={{ width:6, height:6, borderRadius:'50%', flexShrink:0, background: active ? t.accent : 'transparent', border: active ? 'none' : `1.5px solid ${t.faint}`, boxShadow: active ? `0 0 8px rgba(${t.accentGlow},0.7)` : 'none' }}/>
+                  <div style={{ minWidth:0, flex:1 }}>
+                    <div style={{ fontSize:12, fontWeight:600, color: active ? t.accent : t.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.name}</div>
+                    <div style={{ fontSize:10, color:t.muted, fontVariantNumeric:'tabular-nums' }}>${(a.size/1000).toFixed(0)}K</div>
                   </div>
-                )
-              })}
-              <div style={{ height:1, background:t.hairline, margin:'8px 10px' }}/>
-              <button onClick={() => setShowNewAccount(true)} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 14px', border:'none', background:'transparent', color:t.muted, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:FONT, transition:'all 0.12s', textAlign:'left' }}
-                onMouseEnter={e => { e.currentTarget.style.background = t.surface; e.currentTarget.style.color = t.text }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = t.muted }}>
-                <span style={{ fontSize:16, lineHeight:1, color:t.accent, fontWeight:400 }}>+</span> New Eval Account
-              </button>
-            </div>
-          </div>
+                </button>
+                {!active && accountList.length > 1 && (
+                  confirmDelete === a.id ? (
+                    <div style={{ display:'flex', gap:3, paddingRight:8, flexShrink:0 }}>
+                      <button onClick={() => deleteAccount(a.id)} style={{ padding:'3px 7px', borderRadius:5, border:`1px solid ${t.redBorder}`, background:t.redDim, color:t.red, fontSize:10, fontWeight:700, cursor:'pointer', fontFamily:FONT }}>Del</button>
+                      <button onClick={() => setConfirmDelete(null)} style={{ padding:'3px 5px', borderRadius:5, border:`1px solid ${t.hairline}`, background:'transparent', color:t.muted, fontSize:10, cursor:'pointer', fontFamily:FONT }}>✕</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmDelete(a.id)} style={{ flexShrink:0, marginRight:8, width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:5, border:'none', background:'transparent', color:t.faint, fontSize:14, cursor:'pointer', fontFamily:FONT, opacity:0.4, transition:'all 0.15s', lineHeight:1 }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity='1'; e.currentTarget.style.color=t.red }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity='0.4'; e.currentTarget.style.color=t.faint }}>×</button>
+                  )
+                )}
+              </div>
+            )
+          })}
+          <div style={{ height:1, background:t.hairline, margin:'10px 12px' }}/>
+          <button onClick={() => setShowNewAccount(true)} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'9px 16px', border:'none', background:'transparent', color:t.muted, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:FONT, transition:'all 0.12s', textAlign:'left' }}
+            onMouseEnter={e => { e.currentTarget.style.background = t.surface; e.currentTarget.style.color = t.text }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = t.muted }}>
+            <span style={{ fontSize:16, lineHeight:1, color:t.accent, fontWeight:400 }}>+</span> New Eval Account
+          </button>
         </div>
+      </div>
 
-        {/* Center: Main content */}
-        <div style={{ flex:1, minWidth:0, padding:'28px 20px 90px', zoom:0.9 }}>
+      {/* ── Right sidebar (fixed) ── */}
+      <div style={{ position:'fixed', right:0, top:63, bottom:0, width:224, zIndex:18, overflowY:'auto', borderLeft:`1px solid ${t.hairline}`, background:t.headerBg, backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
+        <NewsCard t={t} dark={dark}/>
+      </div>
+
+      {/* ── Center: Main content ── */}
+      <div style={{ marginLeft:210, marginRight:224, position:'relative', zIndex:1 }}>
+        <div style={{ maxWidth:1060, margin:'0 auto', padding:'28px 32px 90px', zoom:0.9 }}>
 
         {/* ── Balance Hero ── */}
         <div style={{ padding:'2px 2px 30px' }}>
@@ -1376,14 +1376,8 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
           </div>
           <ContractCalc t={t} dark={dark} inp={inp}/>
         </div>
-        </div>{/* end center column */}
-
-        {/* Right: News */}
-        <div style={{ width:220, flexShrink:0, padding:'22px 20px 22px 0', position:'sticky', top:63, maxHeight:'calc(100vh - 63px)', overflowY:'auto', boxSizing:'border-box' }}>
-          <NewsCard t={t} dark={dark}/>
-        </div>
-
-      </div>{/* end 3-col body */}
+        </div>{/* end zoom/padding */}
+      </div>{/* end margin offsets */}
     </div>
   )
 }
