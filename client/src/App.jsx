@@ -314,16 +314,26 @@ const INSTRUMENTS = [
 
 function ContractCalc({ t, dark, inp }) {
   const [instrument, setInstrument] = useState('NQ')
-  const [sl, setSl] = useState('')
+  const [sl, setSl]     = useState('')
+  const [tp, setTp]     = useState('')
   const [risk, setRisk] = useState('')
 
-  const inst = INSTRUMENTS.find(i => i.id === instrument)
-  const slN = parseFloat(sl), riskN = parseFloat(risk)
-  const valid = slN > 0 && riskN > 0
+  const inst   = INSTRUMENTS.find(i => i.id === instrument)
+  const slN    = parseFloat(sl)
+  const tpN    = parseFloat(tp)
+  const riskN  = parseFloat(risk)
+  const valid  = slN > 0 && riskN > 0
+  const tpValid = valid && tpN > 0
+
   const miniC  = valid ? Math.max(1, Math.round(riskN / (slN * inst.mini)))  : 0
   const microC = valid ? Math.max(1, Math.round(riskN / (slN * inst.micro))) : 0
   const miniR  = valid ? miniC  * slN * inst.mini  : 0
   const microR = valid ? microC * slN * inst.micro : 0
+
+  // TP profit uses the same contract count derived from SL/risk
+  const miniProfit  = tpValid ? miniC  * tpN * inst.mini  : 0
+  const microProfit = tpValid ? microC * tpN * inst.micro : 0
+  const rr          = tpValid ? (tpN / slN) : 0
 
   return (
     <div style={{ ...glass(t, dark), display:'flex', flexDirection:'column' }}>
@@ -333,6 +343,8 @@ function ContractCalc({ t, dark, inp }) {
           <span style={{ fontSize:17, fontWeight:650, color:t.text }}>Size Calculator</span>
           <span style={{ fontSize:12, color:t.muted }}>{inst.miniLabel} · ${inst.mini.toLocaleString()}/pt</span>
         </div>
+
+        {/* Instrument picker */}
         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
           {INSTRUMENTS.map(i => {
             const active = instrument === i.id
@@ -347,27 +359,55 @@ function ContractCalc({ t, dark, inp }) {
             )
           })}
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-          {[{ label:'SL POINTS', val:sl, set:setSl }, { label:'RISK $', val:risk, set:setRisk }].map(({ label, val, set }) => (
+
+        {/* Inputs: SL + TP + Risk */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
+          {[
+            { label:'SL PTS', val:sl,   set:setSl,   placeholder:'e.g. 20' },
+            { label:'TP PTS', val:tp,   set:setTp,   placeholder:'e.g. 40' },
+            { label:'RISK $', val:risk, set:setRisk, placeholder:'e.g. 500' },
+          ].map(({ label, val, set, placeholder }) => (
             <div key={label}>
               <div style={{ fontSize:10, color:t.muted, fontWeight:700, letterSpacing:'0.15em', marginBottom:6 }}>{label}</div>
-              <input type="number" placeholder="0" value={val} onChange={e => set(e.target.value)}
-                style={{ ...inp, width:'100%', fontSize:14, padding:'11px 13px', borderRadius:12 }}/>
+              <input type="number" placeholder={placeholder} value={val} onChange={e => set(e.target.value)}
+                style={{ ...inp, width:'100%', fontSize:13, padding:'10px 11px', borderRadius:12 }}/>
             </div>
           ))}
         </div>
+
+        {/* R:R badge — only when TP is filled */}
+        {tpValid && (
+          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 14px', borderRadius:10, background:t.surface, border:`1px solid ${t.hairline}` }}>
+            <span style={{ fontSize:12, color:t.muted }}>R:R</span>
+            <span style={{ fontSize:15, fontWeight:720, color: rr >= 2 ? t.green : rr >= 1 ? t.amber : t.red, fontVariantNumeric:'tabular-nums' }}>{rr.toFixed(2)}R</span>
+            <span style={{ fontSize:11, color:t.faint, marginLeft:2 }}>({slN} pts risk → {tpN} pts target)</span>
+          </div>
+        )}
+
+        {/* Result cards */}
         {valid ? (
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
             {[
-              { label:inst.miniLabel,  contracts:miniC,  r:miniR,  color:t.accent },
-              { label:inst.microLabel, contracts:microC, r:microR, color:t.green },
-            ].map(({ label, contracts, r, color }) => (
+              { label:inst.miniLabel,  contracts:miniC,  risk:miniR,  profit:miniProfit,  color:t.accent },
+              { label:inst.microLabel, contracts:microC, risk:microR, profit:microProfit, color:t.green  },
+            ].map(({ label, contracts, risk: r, profit, color }) => (
               <div key={label} style={{ borderRadius:18, padding:'16px 18px',
                 background:`rgba(${t.accentGlow},0.07)`, border:`1px solid rgba(${t.accentGlow},0.18)` }}>
                 <div style={{ fontSize:10, color:t.muted, fontWeight:700, letterSpacing:'0.15em', marginBottom:8 }}>{label}</div>
                 <div style={{ fontSize:38, fontWeight:760, color, letterSpacing:-1, lineHeight:1, marginBottom:2, fontVariantNumeric:'tabular-nums' }}>{contracts}</div>
-                <div style={{ fontSize:11, color:t.muted }}>contracts</div>
-                <div style={{ fontSize:11, color:t.textSec, marginTop:6 }}>{fmt(r)} total risk</div>
+                <div style={{ fontSize:11, color:t.muted, marginBottom:10 }}>contracts</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:4, paddingTop:10, borderTop:`1px solid ${t.hairline}` }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <span style={{ fontSize:11, color:t.muted }}>Risk</span>
+                    <span style={{ fontSize:12, fontWeight:600, color:t.red, fontVariantNumeric:'tabular-nums' }}>−{fmt(r)}</span>
+                  </div>
+                  {tpValid && (
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <span style={{ fontSize:11, color:t.muted }}>Profit</span>
+                      <span style={{ fontSize:12, fontWeight:700, color:t.green, fontVariantNumeric:'tabular-nums' }}>+{fmt(profit)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
