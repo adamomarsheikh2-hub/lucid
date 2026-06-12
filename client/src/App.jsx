@@ -421,6 +421,138 @@ function ContractCalc({ t, dark, inp }) {
   )
 }
 
+// ─── News Card ────────────────────────────────────────────────────────────────
+
+const parseEcon = s => { if (!s) return NaN; return parseFloat(s.replace(/[KMBb%,]/g, '').trim()) }
+
+const fmtEventTime = iso => {
+  const d = new Date(iso)
+  // All-day events have midnight time — show "All Day"
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) return 'All Day'
+  return d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/New_York' })
+}
+
+const fmtEventDate = iso => {
+  const d = new Date(iso)
+  const today = new Date(); today.setHours(0,0,0,0)
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
+  const evtDay = new Date(d); evtDay.setHours(0,0,0,0)
+  if (evtDay.getTime() === today.getTime()) return 'Today'
+  if (evtDay.getTime() === tomorrow.getTime()) return 'Tomorrow'
+  return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })
+}
+
+function NewsCard({ t, dark }) {
+  const [events, setEvents] = useState([])
+  const [status, setStatus]   = useState('loading') // 'loading' | 'ok' | 'error'
+  const [lastUpdate, setLastUpdate] = useState(null)
+
+  const load = useCallback(async () => {
+    try {
+      const data = await fetch('/api/calendar').then(r => r.json())
+      if (!Array.isArray(data)) throw new Error('bad response')
+      // Show events from 1 hour ago onwards so recently-released events still appear
+      const cutoff = Date.now() - 60 * 60 * 1000
+      setEvents(data.filter(e => new Date(e.date).getTime() >= cutoff))
+      setLastUpdate(new Date())
+      setStatus('ok')
+    } catch {
+      setStatus(s => s === 'loading' ? 'error' : s)
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+    const id = setInterval(load, 5 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [load])
+
+  // Group by calendar date string
+  const groups = useMemo(() => {
+    const map = {}
+    events.forEach(e => {
+      const key = new Date(e.date).toDateString()
+      if (!map[key]) map[key] = { label: fmtEventDate(e.date), events: [] }
+      map[key].events.push(e)
+    })
+    return Object.values(map)
+  }, [events])
+
+  return (
+    <div style={{ position:'fixed', right:16, top:74, zIndex:15, width:216 }}>
+      <div style={{ ...glass(t, dark, 14) }}>
+        <Sheen/>
+        <div style={{ position:'relative', zIndex:1 }}>
+          {/* Header */}
+          <div style={{ padding:'14px 14px 10px', display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:`1px solid ${t.hairline}` }}>
+            <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+              <div style={{ width:6, height:6, borderRadius:'50%', background: status === 'ok' ? t.green : status === 'error' ? t.red : t.amber, boxShadow: status === 'ok' ? `0 0 8px rgba(52,221,160,0.7)` : 'none' }}/>
+              <span style={{ fontSize:10, color:t.muted, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase' }}>US Calendar</span>
+            </div>
+            {lastUpdate && <span style={{ fontSize:9, color:t.faint }}>{lastUpdate.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' })}</span>}
+          </div>
+
+          {/* Body */}
+          <div style={{ maxHeight:520, overflowY:'auto', paddingBottom:8 }}>
+            {status === 'loading' && (
+              <div style={{ padding:'24px 14px', fontSize:12, color:t.muted, textAlign:'center' }}>Loading…</div>
+            )}
+            {status === 'error' && (
+              <div style={{ padding:'24px 14px', fontSize:12, color:t.muted, textAlign:'center' }}>Unavailable</div>
+            )}
+            {status === 'ok' && groups.length === 0 && (
+              <div style={{ padding:'24px 14px', fontSize:12, color:t.muted, textAlign:'center' }}>No events this week</div>
+            )}
+            {groups.map(group => (
+              <div key={group.label}>
+                {/* Date label */}
+                <div style={{ padding:'10px 14px 5px', fontSize:9, fontWeight:700, color:t.faint, letterSpacing:'0.12em', textTransform:'uppercase' }}>{group.label}</div>
+
+                {group.events.map((e, i) => {
+                  const isHigh    = e.impact === 'High'
+                  const impactClr = isHigh ? t.red : t.amber
+                  const hasActual = e.actual && e.actual.trim() !== ''
+                  const actN      = parseEcon(e.actual), fctN = parseEcon(e.forecast)
+                  const actClr    = hasActual
+                    ? (!isNaN(actN) && !isNaN(fctN) ? (actN >= fctN ? t.green : t.red) : t.text)
+                    : t.text
+                  const isPast    = new Date(e.date) < new Date()
+
+                  return (
+                    <div key={i} style={{ margin:'2px 10px', borderRadius:9, padding:'8px 10px', background: isPast ? 'transparent' : `rgba(${t.accentGlow},0.04)`, border:`1px solid ${isPast ? t.hairline : `rgba(${t.accentGlow},0.12)`}`, opacity: isPast && !hasActual ? 0.45 : 1 }}>
+                      {/* Top row: time + impact badge */}
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                        <span style={{ fontSize:10.5, fontWeight:600, color: isPast ? t.muted : t.textSec, fontVariantNumeric:'tabular-nums' }}>{fmtEventTime(e.date)}</span>
+                        <span style={{ fontSize:8.5, fontWeight:800, letterSpacing:'0.1em', color:impactClr, background:`${impactClr}18`, border:`1px solid ${impactClr}40`, borderRadius:4, padding:'1px 5px' }}>{isHigh ? 'HIGH' : 'MED'}</span>
+                      </div>
+                      {/* Event name */}
+                      <div style={{ fontSize:11.5, fontWeight:600, color: hasActual ? t.textStrong : t.text, lineHeight:1.35, marginBottom: (e.forecast || e.previous || hasActual) ? 5 : 0, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{e.event}</div>
+                      {/* Forecast / Actual row */}
+                      {(e.forecast || e.previous || hasActual) && (
+                        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                          {e.previous && (
+                            <span style={{ fontSize:10, color:t.faint }}>Prev <span style={{ color:t.muted }}>{e.previous}</span></span>
+                          )}
+                          {e.forecast && !hasActual && (
+                            <span style={{ fontSize:10, color:t.faint }}>Fcst <span style={{ color:t.textSec }}>{e.forecast}</span></span>
+                          )}
+                          {hasActual && (
+                            <span style={{ fontSize:10, fontWeight:700, color:actClr }}>{e.actual}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── New Account Modal ────────────────────────────────────────────────────────
 
 const SIZE_PRESETS = [25000, 50000, 100000, 150000]
@@ -958,6 +1090,9 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
           </div>
         </div>
       </div>
+
+      {/* ── News card (fixed right) ── */}
+      <NewsCard t={t} dark={dark}/>
 
       {/* Journal sidebar tab */}
       <input ref={imageInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleImageUpload}/>

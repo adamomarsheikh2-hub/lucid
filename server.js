@@ -69,6 +69,29 @@ app.post('/api/data/:userId', (req, res) => {
   res.json({ success: true })
 })
 
+// Economic calendar — proxy ForexFactory JSON feed, cache 5 min
+let calCache = { data: null, ts: 0 }
+
+app.get('/api/calendar', async (_req, res) => {
+  const now = Date.now()
+  if (calCache.data && now - calCache.ts < 5 * 60 * 1000) return res.json(calCache.data)
+  try {
+    const [tw, nw] = await Promise.all([
+      fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json?timezone=America%2FNew_York').then(r => r.json()),
+      fetch('https://nfs.faireconomy.media/ff_calendar_nextweek.json?timezone=America%2FNew_York').then(r => r.json()),
+    ])
+    const filtered = [...tw, ...nw]
+      .filter(e => e.country === 'USD' && (e.impact === 'High' || e.impact === 'Medium'))
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+    calCache = { data: filtered, ts: now }
+    res.json(filtered)
+  } catch (err) {
+    console.error('Calendar error:', err.message)
+    if (calCache.data) return res.json(calCache.data) // serve stale on error
+    res.status(502).json({ error: 'Calendar unavailable' })
+  }
+})
+
 // Serve built frontend
 app.use(express.static(path.join(__dirname, 'client', 'dist')))
 app.get('*', (_req, res) => {
