@@ -442,7 +442,7 @@ const fmtEventDate = iso => {
   return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })
 }
 
-function NewsCard({ t, dark }) {
+function NewsCard({ t, dark, onCollapse }) {
   const [events, setEvents] = useState([])
   const [status, setStatus]   = useState('loading') // 'loading' | 'ok' | 'error'
   const [lastUpdate, setLastUpdate] = useState(null)
@@ -483,12 +483,17 @@ function NewsCard({ t, dark }) {
       <Sheen/>
       <div style={{ position:'relative', zIndex:1 }}>
           {/* Header */}
-          <div style={{ padding:'14px 14px 10px', display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:`1px solid ${t.hairline}` }}>
+          <div style={{ padding:'14px 14px 11px', display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:`1px solid ${t.hairline}` }}>
             <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-              <div style={{ width:6, height:6, borderRadius:'50%', background: status === 'ok' ? t.green : status === 'error' ? t.red : t.amber, boxShadow: status === 'ok' ? `0 0 8px rgba(52,221,160,0.7)` : 'none' }}/>
-              <span style={{ fontSize:10, color:t.muted, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase' }}>US Calendar</span>
+              <div style={{ width:6, height:6, borderRadius:'50%', background: status === 'ok' ? t.green : status === 'error' ? t.red : t.amber }}/>
+              <span style={{ fontSize:11, color:t.text, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase' }}>US Calendar</span>
             </div>
-            {lastUpdate && <span style={{ fontSize:9, color:t.faint }}>{lastUpdate.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' })}</span>}
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              {lastUpdate && <span style={{ fontSize:9.5, color:t.faint }}>{lastUpdate.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' })}</span>}
+              {onCollapse && (
+                <button onClick={onCollapse} style={{ background:'none', border:'none', color:t.muted, cursor:'pointer', fontSize:16, lineHeight:1, padding:'0 2px', display:'flex', alignItems:'center' }} onMouseEnter={e => e.currentTarget.style.color=t.text} onMouseLeave={e => e.currentTarget.style.color=t.muted}>›</button>
+              )}
+            </div>
           </div>
 
           {/* Body */}
@@ -505,7 +510,7 @@ function NewsCard({ t, dark }) {
             {groups.map(group => (
               <div key={group.label}>
                 {/* Date label */}
-                <div style={{ padding:'10px 14px 5px', fontSize:9, fontWeight:700, color:t.faint, letterSpacing:'0.12em', textTransform:'uppercase' }}>{group.label}</div>
+                <div style={{ padding:'11px 14px 6px', fontSize:10, fontWeight:700, color:t.textSec, letterSpacing:'0.1em', textTransform:'uppercase' }}>{group.label}</div>
 
                 {group.events.map((e, i) => {
                   const isHigh    = e.impact === 'High'
@@ -518,25 +523,25 @@ function NewsCard({ t, dark }) {
                   const isPast    = new Date(e.date) < new Date()
 
                   return (
-                    <div key={i} style={{ margin:'2px 10px', borderRadius:9, padding:'8px 10px', background: isPast ? 'transparent' : `rgba(${t.accentGlow},0.04)`, border:`1px solid ${isPast ? t.hairline : `rgba(${t.accentGlow},0.12)`}`, opacity: isPast && !hasActual ? 0.45 : 1 }}>
+                    <div key={i} style={{ margin:'4px 10px', borderRadius:9, padding:'10px 11px', background: isPast ? 'transparent' : t.surface, border:`1px solid ${t.hairline}`, opacity: isPast && !hasActual ? 0.5 : 1 }}>
                       {/* Top row: time + impact badge */}
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
-                        <span style={{ fontSize:10.5, fontWeight:600, color: isPast ? t.muted : t.textSec, fontVariantNumeric:'tabular-nums' }}>{fmtEventTime(e.date)}</span>
-                        <span style={{ fontSize:8.5, fontWeight:800, letterSpacing:'0.1em', color:impactClr, background:`${impactClr}18`, border:`1px solid ${impactClr}40`, borderRadius:4, padding:'1px 5px' }}>{isHigh ? 'HIGH' : 'MED'}</span>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
+                        <span style={{ fontSize:11, fontWeight:600, color: isPast ? t.muted : t.textSec, fontVariantNumeric:'tabular-nums' }}>{fmtEventTime(e.date)}</span>
+                        <span style={{ fontSize:9, fontWeight:800, letterSpacing:'0.08em', color:impactClr, background:`${impactClr}18`, border:`1px solid ${impactClr}40`, borderRadius:4, padding:'1px 6px' }}>{isHigh ? 'HIGH' : 'MED'}</span>
                       </div>
                       {/* Event name */}
-                      <div style={{ fontSize:11.5, fontWeight:600, color: hasActual ? t.textStrong : t.text, lineHeight:1.35, marginBottom: (e.forecast || e.previous || hasActual) ? 5 : 0, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{e.title}</div>
+                      <div style={{ fontSize:12.5, fontWeight:650, color: hasActual ? t.textStrong : t.text, lineHeight:1.4, marginBottom: (e.forecast || e.previous || hasActual) ? 6 : 0, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{e.title}</div>
                       {/* Forecast / Actual row */}
                       {(e.forecast || e.previous || hasActual) && (
-                        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                        <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
                           {e.previous && (
-                            <span style={{ fontSize:10, color:t.faint }}>Prev <span style={{ color:t.muted }}>{e.previous}</span></span>
+                            <span style={{ fontSize:10.5, color:t.faint }}>Prev <span style={{ color:t.muted, fontWeight:600 }}>{e.previous}</span></span>
                           )}
                           {e.forecast && !hasActual && (
-                            <span style={{ fontSize:10, color:t.faint }}>Fcst <span style={{ color:t.textSec }}>{e.forecast}</span></span>
+                            <span style={{ fontSize:10.5, color:t.faint }}>Fcst <span style={{ color:t.textSec, fontWeight:600 }}>{e.forecast}</span></span>
                           )}
                           {hasActual && (
-                            <span style={{ fontSize:10, fontWeight:700, color:actClr }}>{e.actual}</span>
+                            <span style={{ fontSize:10.5, fontWeight:700, color:actClr }}>{e.actual}</span>
                           )}
                         </div>
                       )}
@@ -1110,13 +1115,23 @@ function Dashboard({ user, allUsers, onSwitch, dark, setDark, t }) {
         </div>
       </div>}
 
-      {/* ── Right sidebar (fixed, desktop only) ── */}
-      {!mobile && <div style={{ position:'fixed', right:0, top:63, bottom:0, width:224, zIndex:18, overflowY:'auto', borderLeft:`1px solid ${t.hairline}`, background:t.headerBg, backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
-        <NewsCard t={t} dark={dark}/>
-      </div>}
+      {/* ── Right sidebar (fixed, desktop only) — collapsible news ── */}
+      {!mobile && (newsOpen ? (
+        <div style={{ position:'fixed', right:0, top:63, bottom:0, width:224, zIndex:18, overflowY:'auto', borderLeft:`1px solid ${t.hairline}`, background:t.headerBg, backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
+          <NewsCard t={t} dark={dark} onCollapse={() => setNewsOpen(false)}/>
+        </div>
+      ) : (
+        <div onClick={() => setNewsOpen(true)}
+          onMouseEnter={e => e.currentTarget.style.background = t.surfaceHover}
+          onMouseLeave={e => e.currentTarget.style.background = t.headerBg}
+          style={{ position:'fixed', right:0, top:63, bottom:0, width:40, zIndex:18, borderLeft:`1px solid ${t.hairline}`, background:t.headerBg, backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, transition:'background 0.15s' }}>
+          <div style={{ width:6, height:6, borderRadius:'50%', background:t.accent }}/>
+          <span style={{ fontSize:10, fontWeight:700, letterSpacing:'0.18em', color:t.muted, writingMode:'vertical-rl', textOrientation:'upright' }}>NEWS</span>
+        </div>
+      ))}
 
       {/* ── Center: Main content ── */}
-      <div style={{ marginLeft: mobile ? 0 : 210, marginRight: mobile ? 0 : 224, position:'relative', zIndex:1 }}>
+      <div style={{ marginLeft: mobile ? 0 : 210, marginRight: mobile ? 0 : (newsOpen ? 224 : 40), position:'relative', zIndex:1 }}>
         <div style={{ maxWidth: mobile ? 'none' : 1060, margin:'0 auto', padding: mobile ? '16px 16px 80px' : '28px 32px 90px', zoom: mobile ? undefined : 0.9 }}>
 
         {/* ── Balance Hero ── */}
